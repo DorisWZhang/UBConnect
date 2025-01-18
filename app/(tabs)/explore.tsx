@@ -1,5 +1,5 @@
-import { StyleSheet, Image, Platform, View } from 'react-native';
-
+import { StyleSheet, Image, Platform, View, } from 'react-native';
+import { Link, useRouter } from 'expo-router';
 import { Collapsible } from '@/components/Collapsible';
 import { ExternalLink } from '@/components/ExternalLink';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
@@ -9,20 +9,9 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import React from 'react';
 
 export default function ExplorePage() {
+
+    const router = useRouter();
   return (
-    <View style={styles.headerImage}>Explore page</View>
+    <View >Explore page</View>
   );
 }
-
-const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-});
