@@ -12,7 +12,7 @@ export default function LandingPage() {
     const router = useRouter(); // Create router instance to navigate
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>welcome</Text>
+      <Text style={styles.title}>UBConnect</Text>
       
         <TouchableOpacity style={styles.button} onPress={handleClick}>
           <Text style={styles.buttonText}>Login</Text>
@@ -37,10 +37,10 @@ const styles = StyleSheet.create({
     fontSize: 30,
     marginBottom: 20,
     fontWeight: '500',
-    color: '#FF724C'
+    color: 'black'
   },
   button: {
-    backgroundColor: '#FFC350',
+    backgroundColor: 'black',
     height: 50,
     width: 300,
     alignItems: 'center',

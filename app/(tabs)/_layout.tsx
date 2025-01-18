@@ -1,11 +1,47 @@
-import { Tabs } from 'expo-router';
+import { Tabs } from "expo-router"
+//import Ionicons from 'react-native-vector-icons/Ionicons';
 import React from 'react';
 
-export default function TabLayout() {
-  return (
-    <Tabs>
-      <Tabs.Screen name="home" />
-      <Tabs.Screen name="settings" />
-    </Tabs>
-  );
+export default () => {
+    return(
+        <Tabs screenOptions={{
+            headerShown: false, // Hide the header on all screens
+          }}>
+            <Tabs.Screen 
+                name='explore' 
+                options={{ 
+                    title: 'Explore',
+                  
+                }} 
+            />
+            <Tabs.Screen 
+                name='map' 
+                options={{ 
+                    title: 'Map',
+                  
+                }} 
+            />
+            <Tabs.Screen 
+                name='posting' 
+                options={{ 
+                    title: 'Post',
+                  
+                }} 
+            />
+            <Tabs.Screen 
+                name='notifications' 
+                options={{ 
+                    title: 'Notifications',
+                  
+                }} 
+            />
+            <Tabs.Screen 
+                name='profile' 
+                options={{ 
+                    title: 'Profile',
+                    
+                }}
+            />
+        </Tabs>
+    )
 }

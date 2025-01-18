@@ -1,4 +1,4 @@
-import { StyleSheet, Image, Platform, View, } from 'react-native';
+import { StyleSheet, Image, Platform, View, Text} from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { Collapsible } from '@/components/Collapsible';
 import { ExternalLink } from '@/components/ExternalLink';
@@ -12,6 +12,8 @@ export default function ProfilePage() {
 
     const router = useRouter();
   return (
-    <View >Map page</View>
+    <View >
+      <Text> Profile page
+        </Text></View>
   );
 }
