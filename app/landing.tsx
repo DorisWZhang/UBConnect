@@ -13,16 +13,15 @@ export default function LandingPage() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>welcome</Text>
-      <Link href="/login" asChild>
+      
         <TouchableOpacity style={styles.button} onPress={handleClick}>
           <Text style={styles.buttonText}>Login</Text>
         </TouchableOpacity>
-      </Link>
-      <Link href="/signup" asChild>
+     
         <TouchableOpacity style={styles.button}>
           <Text style={styles.buttonText}>Sign up</Text>
         </TouchableOpacity>
-      </Link>
+    
     </View>
   );
 }

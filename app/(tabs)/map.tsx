@@ -8,7 +8,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import React from 'react';
 
-export default function Map() {
+export default function MapPage() {
 
     const router = useRouter();
   return (
