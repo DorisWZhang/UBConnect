@@ -5,20 +5,24 @@ import React from 'react';
 
 export default function LandingPage() {
 
-    const handleClick = async () => {
+    const handleSin = async () => {
         router.push('/explore');
     }
+
+    const handleSup = async () => {
+      router.push('/signup');
+  }
  
     const router = useRouter(); // Create router instance to navigate
   return (
     <View style={styles.container}>
       <Text style={styles.title}>UBConnect</Text>
       
-        <TouchableOpacity style={styles.button} onPress={handleClick}>
+        <TouchableOpacity style={styles.button} onPress={handleSin}>
           <Text style={styles.buttonText}>Login</Text>
         </TouchableOpacity>
      
-        <TouchableOpacity style={styles.button}>
+        <TouchableOpacity style={styles.button} onPress={handleSup}>
           <Text style={styles.buttonText}>Sign up</Text>
         </TouchableOpacity>
     

@@ -314,10 +314,12 @@ const styles = StyleSheet.create({
   eventTitle: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: '#333',
   },
   eventDescription: {
     fontSize: 14,
     marginTop: 5,
+    color: '#333',
   },
   eventDate: {
     fontSize: 12,
