@@ -1,29 +1,36 @@
+// profile.tsx
 import React from 'react';
 import { StyleSheet, Image, View, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 
+// Import your context
+import { useProfile } from '../ProfileContext';
+
 export default function ProfilePage() {
   const router = useRouter();
 
-  // Example data for friends and interests
+  // Grab profile info from context
+  const { name, interests } = useProfile();
+
+  // Example data for friends
   const friendsList = [
     { id: 1, name: 'Alice', avatar: 'https://i.imgur.com/xT3UJDj.png' },
-    { id: 2, name: 'Bob', avatar: 'https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExcnM4YjJlemlhM3BhenpmZjU1MWRweW9ocmxsbDF3bmVpeGdjdXhneSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/sRLzi9Y8P64ExwlcZt/giphy.gif' },
-    { id: 3, name: 'Charlie', avatar: 'https://i.imgur.com/4OLE27o.png' },
+    { id: 2, name: 'Bob', avatar: 'https://i.imgur.com/YUOiaWs.png' },
+    { id: 3, name: 'Charlie', avatar: 'https://i.imgur.com/eSLPLrZ.png' },
     { id: 4, name: 'Diana', avatar: 'https://i.imgur.com/xT3UJDj.png' },
-    { id: 5, name: 'Eve', avatar: 'https://i.imgur.com/4OLE27o.png' },
+    { id: 5, name: 'Eve', avatar: 'https://i.imgur.com/Gef8swX.png' },
+    { id: 6, name: 'Frank', avatar: 'https://i.imgur.com/YUOiaWs.png' },
+    { id: 7, name: 'Grace', avatar: 'https://i.imgur.com/gUb6CDD.png' },
   ];
 
-  const interests = ['Hiking', 'Programming', 'Soccer', 'Photography'];
-
+  // Reuse this function when the pencil or plus is tapped
   const handleEditProfile = () => {
-    router.push('/edit-profile');
+    router.push('../edit-profile');
   };
 
   const handleLogout = () => {
-    // Add logout logic here (e.g., Firebase authentication logout)
     console.log('User logged out');
     router.replace('/landing');
   };
@@ -33,12 +40,19 @@ export default function ProfilePage() {
       {/* Header Section */}
       <View style={styles.header}>
         <Image
-          source={{ uri: 'https://i.imgur.com/4OLE27o.png' }} // Replace with user's profile picture URL
+          source={{ uri: 'https://i.imgur.com/4OLE27o.png' }}
           style={styles.profileImage}
         />
-        <ThemedText style={styles.name} type="title">
-          John Doe
-        </ThemedText>
+        {/* Pencil + Name */}
+        <View style={styles.nameWrapper}>
+          <ThemedText style={styles.name} type="title">
+            {name}
+          </ThemedText>
+          <TouchableOpacity onPress={handleEditProfile}>
+            <ThemedText style={styles.pencilIcon}>🖊️</ThemedText>
+          </TouchableOpacity>
+        </View>
+
         <ThemedText style={styles.email} type="subtitle">
           johndoe@student.ubc.ca
         </ThemedText>
@@ -46,11 +60,15 @@ export default function ProfilePage() {
 
       {/* Content Section */}
       <ScrollView style={styles.contentSection}>
+
         {/* Friends Section */}
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle} type="title">
-            Friends
-          </ThemedText>
+        <View style={[styles.section, styles.friendsSection]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <ThemedText style={styles.sectionTitle} type="title">
+              Friends
+            </ThemedText>
+            {/* Removed "View all" link here */}
+          </View>
           <View style={styles.friendsRow}>
             <ScrollView
               horizontal
@@ -69,16 +87,19 @@ export default function ProfilePage() {
                   />
                 </TouchableOpacity>
               ))}
+              {/* "..." bubble at the end */}
+              <TouchableOpacity
+                style={styles.moreBubble}
+                onPress={() => router.push('/friends')}
+              >
+                <ThemedText style={styles.moreText}>...</ThemedText>
+              </TouchableOpacity>
             </ScrollView>
-            {/* “View All” link or other text */}
-            <ThemedText style={styles.link} onPress={() => router.push('/friends')}>
-              View all
-            </ThemedText>
           </View>
         </View>
 
         {/* Interests Section */}
-        <View style={styles.section}>
+        <View style={[styles.section, styles.interestsSection]}>
           <ThemedText style={styles.sectionTitle} type="title">
             Interests
           </ThemedText>
@@ -88,31 +109,28 @@ export default function ProfilePage() {
                 <ThemedText style={styles.interestText}>{interest}</ThemedText>
               </View>
             ))}
+            {/* Plus icon at the end */}
+            <TouchableOpacity style={styles.interestPlus} onPress={handleEditProfile}>
+              <ThemedText style={styles.plusText}>+</ThemedText>
+            </TouchableOpacity>
           </View>
         </View>
 
         {/* Feed Section */}
-        <View style={styles.section}>
+        <View style={[styles.section, styles.feedSection]}>
           <ThemedText style={styles.sectionTitle} type="title">
             Feed
           </ThemedText>
           <ThemedText style={styles.sectionContent}>
-            Check out the latest activities from your network.{' '}
-            <ThemedText
-              style={styles.link}
-              onPress={() => router.push('/explore')}
-            >
-              Go to Feed
-            </ThemedText>
+            Feed is empty :(
           </ThemedText>
         </View>
       </ScrollView>
 
       {/* Button Section */}
       <View style={styles.buttonSection}>
-        <TouchableOpacity style={styles.button} onPress={handleEditProfile}>
-          <ThemedText style={styles.buttonText}>Edit Profile</ThemedText>
-        </TouchableOpacity>
+        {/* Remove the Edit Profile button */}
+        {/* Keep only the Logout button */}
         <TouchableOpacity
           style={[styles.button, styles.logoutButton]}
           onPress={handleLogout}
@@ -125,91 +143,132 @@ export default function ProfilePage() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
+  container: { 
+    flex: 1, 
+    padding: 20 
   },
-  /* Header Section */
-  header: {
+  header: { 
+    alignItems: 'center', 
+    marginBottom: 20 
+  },
+  profileImage: { 
+    width: 150, 
+    height: 150, 
+    borderRadius: 75, 
+    marginBottom: 10 
+  },
+  // Container for pencil + name
+  nameWrapper: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-  },
-  profileImage: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    marginBottom: 10,
-  },
-  name: {
-    fontSize: 24,
-    fontWeight: 'bold',
     marginBottom: 5,
   },
-  email: {
-    fontSize: 16,
+  pencilIcon: {
+    fontSize: 20,
+    marginRight: 8,
   },
-
-  /* Content Section */
-  contentSection: {
-    flex: 1,
+  name: { 
+    fontSize: 24, 
+    fontWeight: 'bold' 
   },
-  section: {
-    marginBottom: 20,
+  email: { 
+    fontSize: 16 
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
+  contentSection: { 
+    flex: 1 
   },
-  sectionContent: {
-    fontSize: 16,
+  section: { 
+    marginBottom: 20
   },
-  link: {
-    fontSize: 16,
-    textDecorationLine: 'underline',
-    paddingHorizontal: 5,
+  friendsSection: {
+    backgroundColor: '#E8F4FF',
+    borderRadius: 8,
+    padding: 12,
   },
-
-  /* Friends Section */
+  interestsSection: {
+    backgroundColor: '#FFF4E8',
+    borderRadius: 8,
+    padding: 12,
+  },
+  feedSection: {
+    backgroundColor: '#F2E8FF',
+    borderRadius: 8,
+    padding: 12,
+  },
+  sectionTitle: { 
+    fontSize: 18, 
+    fontWeight: 'bold', 
+    marginBottom: 10, 
+    color: '#333'
+  },
+  sectionContent: { 
+    fontSize: 16 
+  },
   friendsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
   },
-  friendsContainer: {
-    // Optional: if you want spacing between friend icons, use padding or margin
+  friendsContainer: { 
     paddingRight: 10,
+    alignItems: 'center',
   },
-  friendItem: {
-    marginRight: 10,
-    // Additional styling can be added here
+  friendItem: { 
+    marginRight: 10 
   },
-  friendAvatar: {
+  friendAvatar: { 
+    width: 50, 
+    height: 50, 
+    borderRadius: 25 
+  },
+  moreBubble: {
     width: 50,
     height: 50,
     borderRadius: 25,
+    backgroundColor: '#CCC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
   },
-
-  /* Interests Section */
+  moreText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
   interestsContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',       // allows wrapping to next line
+    flexWrap: 'wrap',
+    alignItems: 'center',
   },
   interestBubble: {
-    backgroundColor: '#007BFF20', // or any lighter shade of your theme color
+    backgroundColor: 'blue',
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
     marginRight: 8,
     marginBottom: 8,
   },
-  interestText: {
-    fontSize: 14,
+  interestText: { 
+    fontSize: 14, 
+    color: '#fff'
   },
-
-  /* Button Section */
-  buttonSection: {
-    marginTop: 30,
+  // The plus bubble for adding interests
+  interestPlus: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  plusText: {
+    color: '#000',
+    fontSize: 35,
+    fontWeight: 'bold',
+    lineHeight: 35,
+  },
+  buttonSection: { 
+    marginTop: 30 
   },
   button: {
     backgroundColor: '#007BFF',
@@ -218,11 +277,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
-  logoutButton: {
-    backgroundColor: '#FF3B30',
+  logoutButton: { 
+    backgroundColor: '#FF3B30' 
   },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
+  buttonText: { 
+    fontSize: 16, 
+    fontWeight: 'bold', 
+    color: '#fff' 
   },
 });
