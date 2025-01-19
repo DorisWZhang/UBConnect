@@ -52,10 +52,14 @@ export default function ExplorePage() {
         </ScrollView>
       </View>
 
-      <View> 
+      <View > 
         <Text style = {styles.headers}>Events</Text>
-        <ScrollView>
-
+        <ScrollView horizontal={false}>
+        {Object.entries(interests).map(([key, description]) => (
+            <View key={key} style={styles.interestsBox}>
+              <Text style={styles.title}>{key}</Text>
+            </View>
+          ))}
         </ScrollView>
       </View>
     </View>
@@ -89,9 +93,22 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     padding: 15,
     marginRight: 10,
+    borderColor:'black',
   },
   eventsBox: {
-
-  }
+    backgroundColor: '#EAEAEA',
+    borderRadius: 10,
+    marginBottom: 10,
+    width: '95%',
+    height: 125,
+    padding: 15,
+    marginRight: 10,
+    borderColor:'black',
+  },
+  eventsContainer: {
+    height: 400,  // Set a fixed height for the events section
+    marginBottom: 1000,  // Optional: Add margin below the event container
+    flex: 1,
+  },
 });
 
