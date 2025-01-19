@@ -1,7 +1,5 @@
-// notifications.tsx
-
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image } from 'react-native';
 
 const Notifications = () => {
 
@@ -60,6 +58,10 @@ const Notifications = () => {
       ) : (
         <Text style={styles.noNotifications}>No notifications yet!</Text>
       )}
+      <Image
+        source={{ uri: 'https://i.imgur.com/nChKb5C.png' }}
+        style={styles.bottomImage}
+      />
     </View>
   );
 };
@@ -105,6 +107,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#aaa',
     marginTop: 20,
+  },
+  bottomImage: {
+    width: 180,
+    height: 180,
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
   },
 });
 
