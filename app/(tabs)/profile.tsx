@@ -23,7 +23,6 @@ export default function ProfilePage() {
   ];
 
   // Example data for user events
-  // type can be "hosting" or "attending"
   const userEvents = [
     {
       id: 1,
@@ -58,7 +57,7 @@ export default function ProfilePage() {
     router.replace('/landing');
   };
 
-  return (
+  return ( 
     <ThemedView style={styles.container}>
       {/* Header Section */}
       <View style={styles.header}>
@@ -161,10 +160,7 @@ export default function ProfilePage() {
 
                 {/* Tag showing if "hosting" or "attending" */}
                 <View
-                  style={[
-                    styles.tag,
-                    event.type === 'hosting' ? styles.tagHosting : styles.tagAttending
-                  ]}
+                  style={[styles.tag, event.type === 'hosting' ? styles.tagHosting : styles.tagAttending]}
                 >
                   <ThemedText style={styles.tagText}>
                     {event.type.toUpperCase()}
@@ -176,15 +172,13 @@ export default function ProfilePage() {
         </View>
       </ScrollView>
 
-      {/* Button Section */}
-      <View style={styles.buttonSection}>
-        <TouchableOpacity
-          style={[styles.button, styles.logoutButton]}
-          onPress={handleLogout}
-        >
-          <ThemedText style={styles.buttonText}>Log Out</ThemedText>
-        </TouchableOpacity>
-      </View>
+      {/* Button Section - Log out button moved to the corner */}
+      <TouchableOpacity
+        style={styles.logoutButton}
+        onPress={handleLogout}
+      >
+        <ThemedText style={styles.buttonText}>Log Out</ThemedText>
+      </TouchableOpacity>
     </ThemedView>
   );
 }
@@ -192,7 +186,9 @@ export default function ProfilePage() {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    padding: 20 
+    padding: 20, 
+    marginTop: 50,
+    color: 'white',
   },
   header: { 
     alignItems: 'center', 
@@ -286,91 +282,74 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   interestBubble: {
-    backgroundColor: 'blue',
-    borderRadius: 20,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 6,
     marginRight: 8,
     marginBottom: 8,
   },
-  interestText: { 
-    fontSize: 14, 
-    color: '#fff'
+  interestText: {
+    fontSize: 14,
+    color: '#333',
   },
-  // The plus bubble for adding interests
   interestPlus: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#EEE',
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     marginRight: 8,
     marginBottom: 8,
   },
   plusText: {
-    color: '#000',
-    fontSize: 35,
+    fontSize: 18,
     fontWeight: 'bold',
-    lineHeight: 35,
+    color: '#333',
   },
-
-  // Feed Events
   eventContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 10,
+    marginBottom: 16,
   },
   eventTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 4,
-    color: '#333',
   },
   eventDescription: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 2,
+    marginTop: 5,
   },
   eventDate: {
     fontSize: 12,
-    color: '#666',
+    color: '#777',
+    marginTop: 5,
   },
   tag: {
-    marginTop: 6,
-    alignSelf: 'flex-start',
-    borderRadius: 4,
+    paddingVertical: 3,
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 10,
   },
   tagHosting: {
-    backgroundColor: 'orange',
+    backgroundColor: '#FF8C00',
   },
   tagAttending: {
-    backgroundColor: 'green',
+    backgroundColor: '#4CAF50',
   },
   tagText: {
     color: '#fff',
     fontSize: 12,
+  },
+  logoutButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  buttonText: {
+    fontSize: 14,
+    color: '#fff',
     fontWeight: 'bold',
-  },
-
-  buttonSection: { 
-    marginTop: 30 
-  },
-  button: {
-    backgroundColor: '#007BFF',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  logoutButton: { 
-    backgroundColor: '#FF3B30' 
-  },
-  buttonText: { 
-    fontSize: 16, 
-    fontWeight: 'bold', 
-    color: '#fff' 
   },
 });

@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { SearchBar } from '@rneui/themed';
 import React, { useState, useEffect } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -38,12 +38,27 @@ export default function ExplorePage() {
     fetchEvents();
   }, []); // Empty array ensures this runs only once when the component mounts
 
+  // Function to handle search input changes
+  const handleSearch = (text) => {
+    setSearch(text);
+  };
+
+  // Filter events based on search input
+  const filteredEvents = events.filter((event) => {
+    const searchTerm = search.toLowerCase();
+    return (
+      event.title.toLowerCase().includes(searchTerm) ||
+      event.description.toLowerCase().includes(searchTerm) ||
+      event.location.toLowerCase().includes(searchTerm)
+    );
+  });
+
   return (
     <View style={styles.mainContainer}>
       <View style={styles.topContainer}>
         <SearchBar
           value={search}
-          onChangeText={(text) => setSearch(text)}
+          onChangeText={handleSearch}
           containerStyle={{
             backgroundColor: 'transparent',
             borderTopWidth: 0,
@@ -80,12 +95,19 @@ export default function ExplorePage() {
       <View>
         <Text style={styles.headers}>Events</Text>
         <ScrollView horizontal={false}>
-          {events.map((event, index) => (
-            <View key={index} style={styles.eventsBox}>
-              <Text style={styles.eventTitle}>{event.getTitle()}</Text>
-              <Text>{event.getDescription()}</Text>
-              <Text>{event.getLocation() || 'Location not available'}</Text>
-            </View>
+          {filteredEvents.map((event, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.eventsBox}
+              onPress={() => {
+                // Handle event selection
+                console.log(`Selected event: ${event.title}`);
+              }}
+            >
+              <Text style={styles.eventTitle}>{event.title}</Text>
+              <Text>{event.description}</Text>
+              <Text>{event.location || 'Location not available'}</Text>
+            </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
