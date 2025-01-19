@@ -1,25 +1,34 @@
-import { StyleSheet, View, Text, ScrollView,  } from 'react-native';
+import { StyleSheet, View, Text, ScrollView } from 'react-native';
 import { SearchBar } from '@rneui/themed';
 import React, { useState, useEffect } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import interests from "../../assets/Interests";
-import eventsData from '../../assets/Events.json';
-import firestore from '@react-native-firebase/firestore';
+import { getDocs, collection } from 'firebase/firestore';
+import ConnectEventClass from '@/components/models/ConnectEvent';
+import { db } from '../../firebaseConfig.js';  // Import the firestore db reference
 
 // Reference to the 'connectEvents' collection
-const connectEventsCollection = firestore().collection('connectEvents');
-
+const connectEventsCollection = collection(db, 'connectEvents');
 
 export default function ExplorePage() {
-
   const [search, setSearch] = useState('');
-  const [events, setEvents] = useState([]);
+  const [events, setEvents] = useState<ConnectEventClass[]>([]); // State to store events data as ConnectEventClass instances
 
   useEffect(() => {
+    // Function to fetch events from Firestore
     const fetchEvents = async () => {
       try {
-        const snapshot = await connectEventsCollection.get();
-        const eventsList = snapshot.docs.map(doc => doc.data());
+        const querySnapshot = await getDocs(connectEventsCollection);
+        const eventsList = querySnapshot.docs.map((doc) => {
+          const eventData = doc.data();
+          return new ConnectEventClass(
+            eventData.title,
+            eventData.description,
+            eventData.location,
+            eventData.notes,
+            eventData.dateTime.toDate() // Convert Firestore timestamp to JavaScript Date
+          );
+        });
         setEvents(eventsList);
       } catch (error) {
         console.error('Error fetching events:', error);
@@ -27,18 +36,14 @@ export default function ExplorePage() {
     };
 
     fetchEvents();
-  }, []);
-  
-
+  }, []); // Empty array ensures this runs only once when the component mounts
 
   return (
     <View style={styles.mainContainer}>
-      
       <View style={styles.topContainer}>
         <SearchBar
           value={search}
           onChangeText={(text) => setSearch(text)}
-
           containerStyle={{
             backgroundColor: 'transparent',
             borderTopWidth: 0,
@@ -75,18 +80,15 @@ export default function ExplorePage() {
       <View>
         <Text style={styles.headers}>Events</Text>
         <ScrollView horizontal={false}>
-          {eventsData.map((event, index) => (
+          {events.map((event, index) => (
             <View key={index} style={styles.eventsBox}>
-              <Text style={styles.eventTitle}>{event.title}</Text>
-              <Text>{event.description}</Text>
-              <Text>{event.location}</Text>
-              
-            
+              <Text style={styles.eventTitle}>{event.getTitle()}</Text>
+              <Text>{event.getDescription()}</Text>
+              <Text>{event.getLocation() || 'Location not available'}</Text>
             </View>
           ))}
         </ScrollView>
       </View>
-
     </View>
   );
 }
