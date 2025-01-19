@@ -14,7 +14,7 @@ export default function MapPage() {
   return (
     <View > 
       <Text>
-      Map page
+     Map Page
       </Text>
       </View>
   );
