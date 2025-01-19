@@ -34,7 +34,7 @@ export default () => {
             return <Ionicons name={iconName as keyof typeof Ionicons.glyphMap} size={size} color={color} />;
           },
           // Optionally define tabBarActiveTintColor, tabBarInactiveTintColor, etc.
-          tabBarActiveTintColor: '#00AAFF', 
+          tabBarActiveTintColor: '#866FD8', 
           tabBarInactiveTintColor: 'gray',
         })}
       >

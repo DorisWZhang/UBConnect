@@ -61,7 +61,7 @@ export default function ProfilePage() {
     <ThemedView style={styles.container}>
       {/* Header Section */}
       <View style={styles.header}>
-        <Image
+      <Image
           source={{ uri: 'https://i.imgur.com/4OLE27o.png' }}
           style={styles.profileImage}
         />

@@ -21,11 +21,15 @@ export default function LandingPage() {
         <TouchableOpacity style={styles.button} onPress={handleSin}>
           <Text style={styles.buttonText}>Login</Text>
         </TouchableOpacity>
-     
+        <Image
+                  source={{ uri: 'https://i.imgur.com/4OLE27o.png' }}
+                />
+    
         <TouchableOpacity style={styles.button} onPress={handleSup}>
           <Text style={styles.buttonText}>Sign up</Text>
         </TouchableOpacity>
-    
+        
+        
     </View>
   );
 }
@@ -44,7 +48,7 @@ const styles = StyleSheet.create({
     color: 'black'
   },
   button: {
-    backgroundColor: 'black',
+    backgroundColor: '#866FD8',
     height: 50,
     width: 300,
     alignItems: 'center',

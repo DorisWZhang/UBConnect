@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     color: '#333', // Default text color for inputs
   },
   button: {
-    backgroundColor: '#007bff', // Blue background color
+    backgroundColor: '#866FD8', // Blue background color
     paddingVertical: 12,
     borderRadius: 25, // Rounded corners
     alignItems: 'center',

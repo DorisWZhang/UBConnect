@@ -1,6 +1,6 @@
 "use client";
 
-import { Text } from 'react-native';
+import { Text, View} from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { Link, useRouter } from 'expo-router';;
 import { AdvancedMarker, APIProvider, InfoWindow, Map, Pin, useMap } from '@vis.gl/react-google-maps';
@@ -42,11 +42,11 @@ export default function MapPage() {
 
   return (
     <APIProvider apiKey='AIzaSyAyZ8Q7D-1RDQGbjRZxIApOAND_9ovuKhA'>
-      <div style={{ height: '100vh' }}>
+      <View style={{ height: '100vh' }}>
         <Map defaultZoom={13} center={ position } mapId={ '5616403b42848ff7' }>
           <Markers points={events} />
         </Map>
-      </div>
+      </View>
       </APIProvider>
   );
 }
