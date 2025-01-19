@@ -2,6 +2,11 @@ import { StyleSheet, View, Text, TextInput, TouchableOpacity } from 'react-nativ
 import React, { useState } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import RNPickerSelect from 'react-native-picker-select'; // Importing the picker select
+import { getDocs, collection } from 'firebase/firestore';
+import { db } from '../../firebaseConfig.js';
+import { addDoc } from 'firebase/firestore';  // Import these functions
+
+
 
 export default function PostingPage() {
   const [eventName, setEventName] = useState('');
@@ -17,6 +22,7 @@ export default function PostingPage() {
   const [visibility, setVisibility] = useState(''); // Set default to 'Public'
   const [capacity, setCapacity] = useState(''); // Capacity state
   const [category, setCategory] = useState(''); // Category state
+  
 
   const formatDateTime = (date) => {
     if (!date) return ''; // If no date is selected, return an empty string
@@ -38,6 +44,43 @@ export default function PostingPage() {
     }
     setPickerConfig({ ...pickerConfig, show: false });
   };
+
+  const handleSubmit = async () => {
+    // Format the date and time
+   
+    
+    // Combine the start and end dateTime into a single "dateTime" field or store them separately
+    
+  
+    // Collect the data (excluding visibility, capacity, and category)
+    const eventData = {
+      title: eventName, // Store event name as 'title'
+      description, // Store description
+      location, // Store location
+       // Store combined dateTime range
+    };
+  
+    try {
+      // Use addDoc() with the collection and eventData
+      await addDoc(collection(db, 'connectEvents'), eventData);
+  
+      // Log the event data for testing
+      console.log('Event Data Submitted:', eventData);
+  
+      // Optionally, reset the form after successful submission
+      setEventName('');
+      setStartDateTime(null);
+      setEndDateTime(null);
+      setLocation('');
+      setDescription('');
+  
+      // You can show a success message here, or navigate to another screen if needed
+    } catch (error) {
+      console.error('Error adding event to Firestore: ', error);
+      // Optionally, handle errors by showing an error message to the user
+    }
+  };
+  
 
   return (
     <View style={styles.mainContainer}>
@@ -166,7 +209,7 @@ export default function PostingPage() {
       </View>
 
       {/* Create Event Button */}
-      <TouchableOpacity style={styles.button} onPress={() => { /* Add event creation logic here */ }}>
+      <TouchableOpacity style={styles.button} onPress={handleSubmit}>
         <Text style={styles.buttonText}>Create Event</Text>
       </TouchableOpacity>
     </View>
