@@ -2,89 +2,91 @@ import { StyleSheet, View, Text, ScrollView } from 'react-native';
 import { SearchBar } from '@rneui/themed';
 import React, { useState } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import interests from "../../assets/Interests"
+import interests from "../../assets/Interests";
+import eventsData from '../../assets/Events.json';
 
 export default function ExplorePage() {
 
   const [search, setSearch] = useState('');
-  const data = interests.food;
 
   return (
     <View style={styles.mainContainer}>
       
       <View style={styles.topContainer}>
-      <SearchBar
-        value={search}
-        onChangeText={(text) => setSearch(text)}
+        <SearchBar
+          value={search}
+          onChangeText={(text) => setSearch(text)}
 
-        containerStyle={{
-          backgroundColor: 'transparent', // Transparent to avoid any extra background
-          borderTopWidth: 0, // Remove top border
-          borderBottomWidth: 0, // Remove bottom border
-          padding: 0,
-          width: '100%', // Full width of the screen
-          maxWidth: 350, // Limit max width for large screens
-          alignSelf: 'center', // Center horizontally
-        }}
-        inputContainerStyle={{
-          backgroundColor: '#EAEAEA', // Light gray background for the input
-          borderRadius: 20, // Rounded corners
-          height: 50, // Adjust height if needed
-          paddingHorizontal: 10, // Add padding inside the input
-        }}
-        inputStyle={{
-          color: 'black', // Ensure text is visible
-          fontSize: 16, // Adjust text size if needed
-        }}
-      />
-
+          containerStyle={{
+            backgroundColor: 'transparent',
+            borderTopWidth: 0,
+            borderBottomWidth: 0,
+            padding: 0,
+            width: '100%',
+            maxWidth: 350,
+            alignSelf: 'center',
+          }}
+          inputContainerStyle={{
+            backgroundColor: '#EAEAEA',
+            borderRadius: 20,
+            height: 50,
+            paddingHorizontal: 10,
+          }}
+          inputStyle={{
+            color: 'black',
+            fontSize: 16,
+          }}
+        />
       </View>
 
       <View>
-        <Text style = {styles.headers}>Categories</Text>
+        <Text style={styles.headers}>Categories</Text>
         <ScrollView horizontal={true}>
-        {Object.entries(interests).map(([key, description]) => (
+          {Object.entries(interests).map(([key, description]) => (
             <View key={key} style={styles.interestsBox}>
               <Text style={styles.title}>{key}</Text>
             </View>
           ))}
-      
         </ScrollView>
       </View>
 
-      <View > 
-        <Text style = {styles.headers}>Events</Text>
+      <View>
+        <Text style={styles.headers}>Events</Text>
         <ScrollView horizontal={false}>
-        {Object.entries(interests).map(([key, description]) => (
-            <View key={key} style={styles.interestsBox}>
-              <Text style={styles.title}>{key}</Text>
+          {eventsData.map((event, index) => (
+            <View key={index} style={styles.eventsBox}>
+              <Text style={styles.eventTitle}>{event.title}</Text>
+              <Text>{event.description}</Text>
+              <Text>{event.location}</Text>
+              
+            
             </View>
           ))}
         </ScrollView>
       </View>
+
     </View>
   );
 }
 
-
 const styles = StyleSheet.create({
   mainContainer: {
-    flex: 1,  // Take up the full screen height
+    flex: 1,
     backgroundColor: 'white',
-    paddingHorizontal: 20,  // Optional: Add padding to avoid content touching the edges
+    paddingHorizontal: 20,
   },
   title: {
     fontSize: 24,
-    marginBottom: 20,  // Optional: space between title and search bar
+    marginBottom: 20,
   },
   topContainer: {
-    marginTop: 70,  // Set vertical spacing from the top
-    width: '100%',  // Make sure the container takes full width
-    alignItems: 'center',  // Center the search bar horizontally
+    marginTop: 70,
+    width: '100%',
+    alignItems: 'center',
   },
   headers: {
     fontSize: 20,
-    fontWeight: 600,
+    fontWeight: '600',
     paddingVertical: 10,
   },
   interestsBox: {
@@ -93,7 +95,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     padding: 15,
     marginRight: 10,
-    borderColor:'black',
+    borderColor: 'black',
   },
   eventsBox: {
     backgroundColor: '#EAEAEA',
@@ -103,12 +105,9 @@ const styles = StyleSheet.create({
     height: 125,
     padding: 15,
     marginRight: 10,
-    borderColor:'black',
+    borderColor: 'black',
   },
-  eventsContainer: {
-    height: 400,  // Set a fixed height for the events section
-    marginBottom: 1000,  // Optional: Add margin below the event container
-    flex: 1,
-  },
+  eventTitle: {
+    fontSize: 24,
+  }
 });
-

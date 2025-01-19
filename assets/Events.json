@@ -1,0 +1,39 @@
+[
+    {
+      "title": "Grouse Grind Hike",
+      "description": "Looking for fellow UBC students to join me for a hike up the Grouse Grind. Let's enjoy the scenic views together!",
+      "location": "Grouse Grind Trail, North Vancouver, BC",
+      "notes": "Please wear appropriate hiking attire and bring water. The trail is approximately 2.5 km with an elevation gain of 800 meters.",
+      "dateTime": "2025-02-10T08:00:00Z",
+      "organizer": {
+        "name": "Emily Chen",
+        "contact": "emily.chen@email.com"
+      },
+      "participants": []
+    },
+    {
+      "title": "Axe Throwing Meetup",
+      "description": "Looking for fellow UBC students interested in a fun evening of axe throwing. No experience necessary!",
+      "location": "Urban Axe Throwing, Vancouver, BC",
+      "notes": "Safety briefing provided at the start. Wear comfortable clothing.",
+      "dateTime": "2025-03-20T18:00:00Z",
+      "organizer": {
+        "name": "John Doe",
+        "contact": "john.doe@email.com"
+      },
+      "participants": []
+    },
+    {
+      "title": "Study Group for MATH 200",
+      "description": "Seeking study partners for MATH 200. Let's collaborate and prepare for upcoming exams together.",
+      "location": "UBC Library, Vancouver, BC",
+      "notes": "Bring your textbooks and notes. We'll meet in the main study area.",
+      "dateTime": "2025-04-15T14:00:00Z",
+      "organizer": {
+        "name": "Alice Johnson",
+        "contact": "alice.johnson@email.com"
+      },
+      "participants": []
+    }
+  ]
+  
