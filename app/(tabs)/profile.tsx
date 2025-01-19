@@ -187,8 +187,8 @@ const styles = StyleSheet.create({
   container: { 
     flex: 1, 
     padding: 20, 
-    marginTop: 50,
-    color: 'white',
+    paddingTop: 70,
+    backgroundColor: '#DAE2FF',
   },
   header: { 
     alignItems: 'center', 
@@ -211,10 +211,12 @@ const styles = StyleSheet.create({
   },
   name: { 
     fontSize: 24, 
-    fontWeight: 'bold' 
+    fontWeight: 'bold',
+    color: '#333'
   },
   email: { 
-    fontSize: 16 
+    fontSize: 16,
+    color: '#333'
   },
   contentSection: { 
     flex: 1 
@@ -346,6 +348,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
+    marginTop: 30,
   },
   buttonText: {
     fontSize: 14,
