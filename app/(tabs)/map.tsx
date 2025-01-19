@@ -9,6 +9,7 @@ import {
   InfoWindow,
 } from "@vis.gl/react-google-maps";
 import React from "react";
+import { View } from "react-native";
 
 export default function Intro() {
   const position1 = { lat: 49.2606, lng: -123.2460 };
@@ -18,7 +19,7 @@ export default function Intro() {
 
   return (
     <APIProvider apiKey={'AIzaSyC5xYHLYYgfFKpK6Zmmt1dWCLNGrOEPdCw'}>
-      <div style={{ height: "100vh", width: "100%" }}>
+      <View style={{ height: "100vh", width: "100%" }}>
         <Map defaultZoom={13} center={position} mapId={'5616403b42848ff7'}>
           <AdvancedMarker position={position1} onClick={() => setOpen(true)}>
             <Pin
@@ -41,11 +42,11 @@ export default function Intro() {
 
           {open && (
             <InfoWindow position={position} onCloseClick={() => setOpen(false)}>
-              <p>I'm in Hamburg</p>
+              <p>Event here</p>
             </InfoWindow>
           )}
         </Map>
-      </div>
+      </View>
     </APIProvider>
   );
 }
