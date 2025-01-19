@@ -1,13 +1,35 @@
-import { StyleSheet, View, Text, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, ScrollView,  } from 'react-native';
 import { SearchBar } from '@rneui/themed';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import interests from "../../assets/Interests";
 import eventsData from '../../assets/Events.json';
+import firestore from '@react-native-firebase/firestore';
+
+// Reference to the 'connectEvents' collection
+const connectEventsCollection = firestore().collection('connectEvents');
+
 
 export default function ExplorePage() {
 
   const [search, setSearch] = useState('');
+  const [events, setEvents] = useState([]);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const snapshot = await connectEventsCollection.get();
+        const eventsList = snapshot.docs.map(doc => doc.data());
+        setEvents(eventsList);
+      } catch (error) {
+        console.error('Error fetching events:', error);
+      }
+    };
+
+    fetchEvents();
+  }, []);
+  
+
 
   return (
     <View style={styles.mainContainer}>
