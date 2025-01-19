@@ -1,12 +1,9 @@
-// profile.tsx
 import React from 'react';
 import { StyleSheet, Image, View, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-
-// Import your context
-import { useProfile } from '../ProfileContext';
+import { useProfile } from '../ProfileContext'; // Use your ProfileContext
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -25,7 +22,33 @@ export default function ProfilePage() {
     { id: 7, name: 'Grace', avatar: 'https://i.imgur.com/gUb6CDD.png' },
   ];
 
-  // Reuse this function when the pencil or plus is tapped
+  // Example data for user events
+  // type can be "hosting" or "attending"
+  const userEvents = [
+    {
+      id: 1,
+      title: 'Saturday BBQ',
+      description: 'Meet at the local park with friends and family!',
+      date: 'Jan 20, 1 PM',
+      type: 'hosting',
+    },
+    {
+      id: 2,
+      title: 'Charity Fun Run',
+      description: 'Join the 5K run for a good cause.',
+      date: 'Jan 25, 9 AM',
+      type: 'attending',
+    },
+    {
+      id: 3,
+      title: 'Music Jam Session',
+      description: 'Bring your instruments! All are welcome.',
+      date: 'Feb 2, 7 PM',
+      type: 'hosting',
+    },
+  ];
+
+  // Handlers
   const handleEditProfile = () => {
     router.push('../edit-profile');
   };
@@ -60,14 +83,12 @@ export default function ProfilePage() {
 
       {/* Content Section */}
       <ScrollView style={styles.contentSection}>
-
         {/* Friends Section */}
         <View style={[styles.section, styles.friendsSection]}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <ThemedText style={styles.sectionTitle} type="title">
               Friends
             </ThemedText>
-            {/* Removed "View all" link here */}
           </View>
           <View style={styles.friendsRow}>
             <ScrollView
@@ -121,16 +142,42 @@ export default function ProfilePage() {
           <ThemedText style={styles.sectionTitle} type="title">
             Feed
           </ThemedText>
-          <ThemedText style={styles.sectionContent}>
-            Feed is empty :(
-          </ThemedText>
+
+          {/* If there are no events, show "Feed is empty :(" */}
+          {userEvents.length === 0 ? (
+            <ThemedText style={styles.sectionContent}>Feed is empty :(</ThemedText>
+          ) : (
+            userEvents.map((event) => (
+              <View key={event.id} style={styles.eventContainer}>
+                <ThemedText style={styles.eventTitle} type="subtitle">
+                  {event.title}
+                </ThemedText>
+                <ThemedText style={styles.eventDescription}>
+                  {event.description}
+                </ThemedText>
+                <ThemedText style={styles.eventDate}>
+                  {event.date}
+                </ThemedText>
+
+                {/* Tag showing if "hosting" or "attending" */}
+                <View
+                  style={[
+                    styles.tag,
+                    event.type === 'hosting' ? styles.tagHosting : styles.tagAttending
+                  ]}
+                >
+                  <ThemedText style={styles.tagText}>
+                    {event.type.toUpperCase()}
+                  </ThemedText>
+                </View>
+              </View>
+            ))
+          )}
         </View>
       </ScrollView>
 
       {/* Button Section */}
       <View style={styles.buttonSection}>
-        {/* Remove the Edit Profile button */}
-        {/* Keep only the Logout button */}
         <TouchableOpacity
           style={[styles.button, styles.logoutButton]}
           onPress={handleLogout}
@@ -157,7 +204,6 @@ const styles = StyleSheet.create({
     borderRadius: 75, 
     marginBottom: 10 
   },
-  // Container for pencil + name
   nameWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -267,6 +313,48 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     lineHeight: 35,
   },
+
+  // Feed Events
+  eventContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+  },
+  eventTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 4,
+    color: '#333',
+  },
+  eventDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 2,
+  },
+  eventDate: {
+    fontSize: 12,
+    color: '#666',
+  },
+  tag: {
+    marginTop: 6,
+    alignSelf: 'flex-start',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  tagHosting: {
+    backgroundColor: 'orange',
+  },
+  tagAttending: {
+    backgroundColor: 'green',
+  },
+  tagText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+
   buttonSection: { 
     marginTop: 30 
   },
