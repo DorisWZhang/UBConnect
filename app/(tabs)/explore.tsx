@@ -9,6 +9,7 @@ import { db } from '../../firebaseConfig.js';
 // Reference to the 'connectEvents' collection
 const connectEventsCollection = collection(db, 'connectEvents');
 
+
 // Updated interests object with icon details
 const interests = {
   Fitness: { iconLibrary: 'Ionicons', iconName: 'fitness-outline' },
@@ -31,19 +32,29 @@ export default function ExplorePage() {
         const querySnapshot = await getDocs(connectEventsCollection);
         const eventsList = querySnapshot.docs.map((doc) => {
           const eventData = doc.data();
+    
+          // Check if the event has a valid date
+          //const eventDate = eventData.dateTime ? eventData.dateTime.toDate() : null;
+    
+          // Only return events with a valid date
+         
           return new ConnectEventClass(
-            eventData.title,
-            eventData.description,
-            eventData.location,
-            eventData.notes,
-            eventData.dateTime.toDate() // Convert Firestore timestamp to JavaScript Date
+              eventData.title,
+              eventData.description,
+              eventData.location,
+              eventData.notes,
+             
           );
-        });
+          
+          return null; // Ignore events without a date
+        }).filter(event => event !== null); // Filter out null events
+    
         setEvents(eventsList);
       } catch (error) {
         console.error('Error fetching events:', error);
       }
     };
+    
 
     fetchEvents();
   }, []);

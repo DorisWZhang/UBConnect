@@ -3,7 +3,7 @@ type ConnectEvent = {
     description: string;
     location: string;
     notes: string;
-    dateTime: Date;
+   
   };
   
   class ConnectEventClass {
@@ -11,20 +11,20 @@ type ConnectEvent = {
     description: string;
     location: string;
     notes: string;
-    dateTime: Date;
+   
   
     constructor(
       title: string,
       description: string,
       location: string,
       notes: string,
-      dateTime: Date
+      
     ) {
       this.title = title;
       this.description = description;
       this.location = location;
       this.notes = notes;
-      this.dateTime = dateTime;
+      
     }
   
     getTitle(): string {
@@ -43,9 +43,7 @@ type ConnectEvent = {
       return this.notes;
     }
   
-    getDateTime(): Date {
-      return this.dateTime;
-    }
+   
   }
   
   export default ConnectEventClass;

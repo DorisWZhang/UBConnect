@@ -17,6 +17,7 @@
   "dependencies": {
     "18": "^0.0.0",
     "@expo/vector-icons": "^14.0.4",
+    "@googlemaps/markerclusterer": "^2.5.3",
     "@react-native-community/datetimepicker": "^8.2.0",
     "@react-native-firebase/app": "^21.7.0",
     "@react-native-firebase/firestore": "^21.7.0",
