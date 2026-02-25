@@ -1,12 +1,10 @@
 // firebaseConfig.js — Single Firebase initialization from env vars
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ---------------------------------------------------------------------------
 // Runtime guard: ensure all required EXPO_PUBLIC_FIREBASE_* env vars are set.
-// If any are missing the app will log a clear message instead of crashing with
-// a cryptic Firebase error.
 // ---------------------------------------------------------------------------
 const requiredEnvVars = [
   'EXPO_PUBLIC_FIREBASE_API_KEY',
@@ -37,11 +35,18 @@ const firebaseConfig = {
   storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID, // optional
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 // Single initialization — one app, one auth, one db
+import { Platform } from 'react-native';
+import { getAuth } from 'firebase/auth';
+
 const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+
+// Try using getAuth uniformly instead of initializeAuth for React Native and Expo
+const authInstance = getAuth(app);
+export const auth = authInstance;
+
 export const db = getFirestore(app);
 export default app;
