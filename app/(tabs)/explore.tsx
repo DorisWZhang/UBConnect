@@ -3,92 +3,92 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, TextInput } from 
 import { SearchBar } from '@rneui/themed';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDocs, collection } from 'firebase/firestore';
-import ConnectEventClass from '@/components/models/ConnectEvent';
-import { db } from '../../firebaseConfig.js';
+import { ConnectEvent, fromFirestoreDoc } from '@/components/models/ConnectEvent';
+import { db } from '../../firebaseConfig';
+import { captureException, logEvent } from '@/src/telemetry';
 
-// Reference to the 'connectEvents' collection
 const connectEventsCollection = collection(db, 'connectEvents');
 
-
-// Updated interests object with icon details
-const interests = {
+// Category icons
+const interests: Record<string, { iconLibrary: string; iconName: string }> = {
   Fitness: { iconLibrary: 'Ionicons', iconName: 'fitness-outline' },
   Outdoors: { iconLibrary: 'Ionicons', iconName: 'leaf-outline' },
-  Food: { iconLibrary: 'MaterialIcons', iconName: 'restaurant-menu' },
-  Reading: { iconLibrary: 'FontAwesome', iconName: 'book' },
-  Technology: { iconLibrary: 'FontAwesome', iconName: 'laptop' },
+  Food: { iconLibrary: 'Ionicons', iconName: 'restaurant-menu' },
+  Reading: { iconLibrary: 'Ionicons', iconName: 'book' },
+  Technology: { iconLibrary: 'Ionicons', iconName: 'laptop' },
   Music: { iconLibrary: 'Ionicons', iconName: 'musical-notes-outline' },
 };
 
 export default function ExplorePage() {
   const [search, setSearch] = useState('');
-  const [events, setEvents] = useState<ConnectEventClass[]>([]);
-  const [selectedEvent, setSelectedEvent] = useState<ConnectEventClass | null>(null); // State to track the selected event
-  const [comment, setComment] = useState(''); // State to handle comments input
+  const [events, setEvents] = useState<ConnectEvent[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [comment, setComment] = useState('');
+  // UI-only comments state keyed by event id (never mutate event objects)
+  const [commentsByEvent, setCommentsByEvent] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     const fetchEvents = async () => {
+      const startTime = Date.now();
       try {
         const querySnapshot = await getDocs(connectEventsCollection);
-        const eventsList = querySnapshot.docs.map((doc) => {
-          const eventData = doc.data();
-    
-          // Check if the event has a valid date
-          //const eventDate = eventData.dateTime ? eventData.dateTime.toDate() : null;
-    
-          // Only return events with a valid date
-         
-          return new ConnectEventClass(
-              eventData.title,
-              eventData.description,
-              eventData.location,
-              eventData.notes,
-             
-          );
-          
-          return null; // Ignore events without a date
-        }).filter(event => event !== null); // Filter out null events
-    
+        const eventsList: ConnectEvent[] = [];
+
+        querySnapshot.docs.forEach((doc) => {
+          const event = fromFirestoreDoc(doc.id, doc.data());
+          if (event && event.title) {
+            eventsList.push(event);
+          }
+        });
+
         setEvents(eventsList);
+        logEvent('explore_fetch_success', {
+          count: eventsList.length,
+          latencyMs: Date.now() - startTime,
+        });
       } catch (error) {
-        console.error('Error fetching events:', error);
+        captureException(error, { flow: 'explore_fetch', latencyMs: Date.now() - startTime });
       }
     };
-    
 
     fetchEvents();
   }, []);
 
-  const handleSearch = (text) => {
+  const handleSearch = (text: string) => {
     setSearch(text);
   };
 
   const filteredEvents = events.filter((event) => {
     const searchTerm = search.toLowerCase();
     return (
-      event.title.toLowerCase().includes(searchTerm) ||
-      event.description.toLowerCase().includes(searchTerm) ||
-      event.location.toLowerCase().includes(searchTerm)
+      (event.title || '').toLowerCase().includes(searchTerm) ||
+      (event.description || '').toLowerCase().includes(searchTerm) ||
+      (event.location || '').toLowerCase().includes(searchTerm)
     );
   });
 
-  const toggleEventExpansion = (event) => {
-    setSelectedEvent((prev) => (prev === event ? null : event));
+  const toggleEventExpansion = (eventId: string) => {
+    setSelectedEventId((prev) => (prev === eventId ? null : eventId));
   };
 
-  const handleAttend = (event) => {
-    console.log(`Attending event: ${event.title}`);
-    console.log(`Comment: ${comment}`);
+  const handleAddComment = (eventId: string) => {
+    if (!comment.trim()) return;
 
-    // Add the comment to the event's comments array
-    event.comments = event.comments || []; // Initialize comments if not already done
-    event.comments.push(`John Doe: ${comment}`); // Format the comment with the user's name
-
-    // Update the state with the modified event list
-    setEvents([...events]);
-
-    // Reset comment input
+    setCommentsByEvent((prev) => ({
+      ...prev,
+      [eventId]: [...(prev[eventId] || []), `User: ${comment.trim()}`],
+    }));
     setComment('');
+  };
+
+  const formatDate = (date: Date | null) => {
+    if (!date) return '';
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   return (
@@ -105,7 +105,7 @@ export default function ExplorePage() {
 
       <View>
         <Text style={styles.headers}>Categories</Text>
-        <ScrollView horizontal={true} style={styles.categoryContainer}>
+        <ScrollView horizontal style={styles.categoryContainer}>
           {Object.entries(interests).map(([key, { iconLibrary, iconName }]) => {
             const IconComponent = require('@expo/vector-icons')[iconLibrary];
             return (
@@ -118,55 +118,77 @@ export default function ExplorePage() {
         </ScrollView>
       </View>
 
-      <View>
+      <View style={{ flex: 1 }}>
         <Text style={styles.headers}>Events</Text>
-        <ScrollView horizontal={false}>
-          {filteredEvents.map((event, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[styles.eventsBox, selectedEvent === event && styles.expandedEventBox]}
-              onPress={() => toggleEventExpansion(event)}
-            >
-              <Text style={styles.eventTitle}>{event.title}</Text>
-              <Text>{event.description}</Text>
-              <Text>{event.location || 'Location not available'}</Text>
+        <ScrollView>
+          {filteredEvents.map((event) => {
+            const isSelected = selectedEventId === event.id;
+            const eventComments = commentsByEvent[event.id] || [];
 
-              {selectedEvent === event && (
-                <View style={styles.expandedContent}>
-                  <View style={styles.commentContainer}>
-                    <TextInput
-                      style={styles.commentInput}
-                      value={comment}
-                      placeholder="Add a comment"
-                      placeholderTextColor="#aaa"
-                      onChangeText={setComment}
-                    />
-                    <TouchableOpacity
-                      onPress={() => handleAttend(event)}
-                      style={styles.arrowButton}
-                    >
-                      <Ionicons name="arrow-forward-circle" size={32} color="#fff" />
+            return (
+              <TouchableOpacity
+                key={event.id}
+                style={[styles.eventsBox, isSelected && styles.expandedEventBox]}
+                onPress={() => toggleEventExpansion(event.id)}
+              >
+                <Text style={styles.eventTitle}>{event.title}</Text>
+                <Text>{event.description}</Text>
+                <Text>{event.location || 'Location not available'}</Text>
+                {event.startAt && (
+                  <Text style={styles.eventDate}>
+                    {formatDate(event.startAt)}
+                    {event.endAt ? ` — ${formatDate(event.endAt)}` : ''}
+                  </Text>
+                )}
+                {event.category ? (
+                  <View style={styles.categoryBadge}>
+                    <Text style={styles.categoryBadgeText}>{event.category}</Text>
+                  </View>
+                ) : null}
+
+                {isSelected && (
+                  <View style={styles.expandedContent}>
+                    <View style={styles.commentContainer}>
+                      <TextInput
+                        style={styles.commentInput}
+                        value={comment}
+                        placeholder="Add a comment"
+                        placeholderTextColor="#aaa"
+                        onChangeText={setComment}
+                      />
+                      <TouchableOpacity
+                        onPress={() => handleAddComment(event.id)}
+                        style={styles.arrowButton}
+                      >
+                        <Ionicons name="arrow-forward-circle" size={32} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                    <TouchableOpacity style={styles.attendButton}>
+                      <Text style={styles.attendButtonText}>Attend Activity</Text>
                     </TouchableOpacity>
+                    <Text style={{ marginTop: 10, fontSize: 15, fontWeight: '600' }}>
+                      Comments
+                    </Text>
+                    <View style={styles.commentList}>
+                      {eventComments.map((c, idx) => (
+                        <Text key={idx} style={styles.commentText}>
+                          {c}
+                        </Text>
+                      ))}
+                      {eventComments.length === 0 && (
+                        <Text style={styles.commentText}>No comments yet</Text>
+                      )}
+                    </View>
                   </View>
-                  <TouchableOpacity
-                    onPress={() => handleAttend(event)}
-                    style={styles.attendButton}
-                  >
-                    <Text style={styles.attendButtonText}>Attend Activity</Text>
-                  </TouchableOpacity>
-                  <Text style={{ marginTop: 10, fontSize: 15, fontWeight: 600 }}>Comments</Text>
-                  {/* Displaying the comments */}
-                  <View style={styles.commentList}>
-                    {event.comments && event.comments.map((comment, idx) => (
-                      <Text key={idx} style={styles.commentText}>
-                        {comment}
-                      </Text>
-                    ))}
-                  </View>
-                </View>
-              )}
-            </TouchableOpacity>
-          ))}
+                )}
+              </TouchableOpacity>
+            );
+          })}
+          {filteredEvents.length === 0 && (
+            <Text style={{ textAlign: 'center', color: '#999', marginTop: 20 }}>
+              No events found
+            </Text>
+          )}
         </ScrollView>
       </View>
     </View>
@@ -217,10 +239,27 @@ const styles = StyleSheet.create({
     borderColor: 'black',
   },
   expandedEventBox: {
-    height: 300, // Increased height for expanded cards to accommodate comments
+    minHeight: 300,
   },
   eventTitle: {
     fontSize: 24,
+  },
+  eventDate: {
+    fontSize: 12,
+    color: '#777',
+    marginTop: 4,
+  },
+  categoryBadge: {
+    backgroundColor: '#866FD8',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    alignSelf: 'flex-start',
+    marginTop: 6,
+  },
+  categoryBadgeText: {
+    color: '#fff',
+    fontSize: 12,
   },
   expandedContent: {
     marginTop: 10,

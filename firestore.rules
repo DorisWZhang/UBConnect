@@ -1,0 +1,40 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ----------------------------------------------------------------
+    // connectEvents — the main events collection
+    // ----------------------------------------------------------------
+    match /connectEvents/{eventId} {
+
+      // Read: any authenticated user with a verified email
+      allow read: if request.auth != null
+                  && request.auth.token.email_verified == true;
+
+      // Create: verified user, createdBy must match uid, required fields present
+      allow create: if request.auth != null
+                    && request.auth.token.email_verified == true
+                    && request.resource.data.createdBy == request.auth.uid
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() > 0
+                    && request.resource.data.description is string
+                    && request.resource.data.description.size() > 0;
+
+      // Update: only the creator can update their own event
+      allow update: if request.auth != null
+                    && request.auth.token.email_verified == true
+                    && resource.data.createdBy == request.auth.uid
+                    && request.resource.data.createdBy == request.auth.uid;
+
+      // Delete: only the creator
+      allow delete: if request.auth != null
+                    && resource.data.createdBy == request.auth.uid;
+    }
+
+    // Deny everything else by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

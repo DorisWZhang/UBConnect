@@ -1,31 +1,47 @@
+// firebaseConfig.js — Single Firebase initialization from env vars
+import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// ---------------------------------------------------------------------------
+// Runtime guard: ensure all required EXPO_PUBLIC_FIREBASE_* env vars are set.
+// If any are missing the app will log a clear message instead of crashing with
+// a cryptic Firebase error.
+// ---------------------------------------------------------------------------
+const requiredEnvVars = [
+  'EXPO_PUBLIC_FIREBASE_API_KEY',
+  'EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN',
+  'EXPO_PUBLIC_FIREBASE_PROJECT_ID',
+  'EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET',
+  'EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
+  'EXPO_PUBLIC_FIREBASE_APP_ID',
+];
+
+const missing = requiredEnvVars.filter((key) => !process.env[key]);
+if (missing.length > 0) {
+  const msg =
+    `[UBConnect] Missing required environment variables:\n` +
+    missing.map((k) => `  • ${k}`).join('\n') +
+    `\n\nCopy .env.example to .env and fill in your Firebase project values.`;
+  console.error(msg);
+  throw new Error(msg);
+}
+
+// ---------------------------------------------------------------------------
+// Firebase config — all values sourced from Expo public env vars
+// ---------------------------------------------------------------------------
 const firebaseConfig = {
-  apiKey: "AIzaSyAopxRE2QKISJ8pkXXpsiNNSlEEqPKbZ2c",
-  authDomain: "ubconnect-793d3.firebaseapp.com",
-  projectId: "ubconnect-793d3",
-  storageBucket: "ubconnect-793d3.firebasestorage.app",
-  messagingSenderId: "505763970947",
-  appId: "1:505763970947:web:3bdb5a06d3fe387af500b6",
-  measurementId: "G-K1PY1QN1LP"
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID, // optional
 };
 
-// Initialize Firebase
+// Single initialization — one app, one auth, one db
 const app = initializeApp(firebaseConfig);
-// const analytics = getAnalytics(app);
+export const auth = getAuth(app);
 export const db = getFirestore(app);
-// (Optional) import { getStorage } from 'firebase/storage';
-
-// Replace the config object with your actual Firebase credentials const firebaseConfig = { apiKey: "YOUR_API_KEY", authDomain: "YOUR_PROJECT_ID.firebaseapp.com", projectId: "YOUR_PROJECT_ID", storageBucket: "YOUR_PROJECT_ID.appspot.com", messagingSenderId: "YOUR_SENDER_ID", appId: "YOUR_APP_ID", };
-
-// Initialize Firebase const app = initializeApp(firebaseConfig);
-
-// Export services for use throughout the app export const auth = getAuth(app); export const db = getFirestore(app); // export const storage = getStorage(app); // if you need file storage
+export default app;

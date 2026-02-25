@@ -1,15 +1,20 @@
-// app/_layout.js
+// app/_layout.tsx — Root layout with AuthProvider
 import { Stack } from 'expo-router';
 import React from 'react';
+import { AuthProvider } from '@/src/auth/AuthContext';
 
-export default function Layout() {
+export default function RootLayout() {
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false, // Hide the header on all screens
-      }}
-    >
-      <Stack.Screen name="(tabs)"/>
+    <AuthProvider>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+        <Stack.Screen name="landing" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(tabs)" />
       </Stack>
+    </AuthProvider>
   );
 }

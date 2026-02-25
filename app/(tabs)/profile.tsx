@@ -1,15 +1,15 @@
 import React from 'react';
-import { StyleSheet, Image, View, ScrollView, TouchableOpacity } from 'react-native';
+import { StyleSheet, Image, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useProfile } from '../ProfileContext'; // Use your ProfileContext
+import { useProfile } from '../ProfileContext';
+import { useAuth } from '@/src/auth/AuthContext';
 
 export default function ProfilePage() {
   const router = useRouter();
-
-  // Grab profile info from context
   const { name, interests } = useProfile();
+  const { user, logOut } = useAuth();
 
   // Example data for friends
   const friendsList = [
@@ -47,25 +47,31 @@ export default function ProfilePage() {
     },
   ];
 
-  // Handlers
   const handleEditProfile = () => {
     router.push('../edit-profile');
   };
 
-  const handleLogout = () => {
-    console.log('User logged out');
-    router.replace('/landing');
+  const handleLogout = async () => {
+    try {
+      await logOut();
+      router.replace('/landing');
+    } catch {
+      Alert.alert('Error', 'Failed to log out.');
+    }
   };
 
-  return ( 
+  const handleFriendsComingSoon = () => {
+    Alert.alert('Coming Soon', 'The friends feature is under development!');
+  };
+
+  return (
     <ThemedView style={styles.container}>
       {/* Header Section */}
       <View style={styles.header}>
-      <Image
+        <Image
           source={{ uri: 'https://i.imgur.com/4OLE27o.png' }}
           style={styles.profileImage}
         />
-        {/* Pencil + Name */}
         <View style={styles.nameWrapper}>
           <ThemedText style={styles.name} type="title">
             {name}
@@ -76,8 +82,13 @@ export default function ProfilePage() {
         </View>
 
         <ThemedText style={styles.email} type="subtitle">
-          johndoe@student.ubc.ca
+          {user?.email ?? 'johndoe@student.ubc.ca'}
         </ThemedText>
+        {user && !user.emailVerified && (
+          <ThemedText style={styles.verifyWarning}>
+            ⚠️ Email not verified — check your inbox
+          </ThemedText>
+        )}
       </View>
 
       {/* Content Section */}
@@ -99,7 +110,7 @@ export default function ProfilePage() {
                 <TouchableOpacity
                   key={friend.id}
                   style={styles.friendItem}
-                  onPress={() => router.push(`/friends/${friend.id}`)}
+                  onPress={handleFriendsComingSoon}
                 >
                   <Image
                     source={{ uri: friend.avatar }}
@@ -110,7 +121,7 @@ export default function ProfilePage() {
               {/* "..." bubble at the end */}
               <TouchableOpacity
                 style={styles.moreBubble}
-                onPress={() => router.push('/friends')}
+                onPress={handleFriendsComingSoon}
               >
                 <ThemedText style={styles.moreText}>...</ThemedText>
               </TouchableOpacity>
@@ -129,7 +140,6 @@ export default function ProfilePage() {
                 <ThemedText style={styles.interestText}>{interest}</ThemedText>
               </View>
             ))}
-            {/* Plus icon at the end */}
             <TouchableOpacity style={styles.interestPlus} onPress={handleEditProfile}>
               <ThemedText style={styles.plusText}>+</ThemedText>
             </TouchableOpacity>
@@ -142,7 +152,6 @@ export default function ProfilePage() {
             Feed
           </ThemedText>
 
-          {/* If there are no events, show "Feed is empty :(" */}
           {userEvents.length === 0 ? (
             <ThemedText style={styles.sectionContent}>Feed is empty :(</ThemedText>
           ) : (
@@ -154,13 +163,13 @@ export default function ProfilePage() {
                 <ThemedText style={styles.eventDescription}>
                   {event.description}
                 </ThemedText>
-                <ThemedText style={styles.eventDate}>
-                  {event.date}
-                </ThemedText>
+                <ThemedText style={styles.eventDate}>{event.date}</ThemedText>
 
-                {/* Tag showing if "hosting" or "attending" */}
                 <View
-                  style={[styles.tag, event.type === 'hosting' ? styles.tagHosting : styles.tagAttending]}
+                  style={[
+                    styles.tag,
+                    event.type === 'hosting' ? styles.tagHosting : styles.tagAttending,
+                  ]}
                 >
                   <ThemedText style={styles.tagText}>
                     {event.type.toUpperCase()}
@@ -172,11 +181,8 @@ export default function ProfilePage() {
         </View>
       </ScrollView>
 
-      {/* Button Section - Log out button moved to the corner */}
-      <TouchableOpacity
-        style={styles.logoutButton}
-        onPress={handleLogout}
-      >
+      {/* Log out button */}
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <ThemedText style={styles.buttonText}>Log Out</ThemedText>
       </TouchableOpacity>
     </ThemedView>
@@ -184,21 +190,21 @@ export default function ProfilePage() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    padding: 20, 
+  container: {
+    flex: 1,
+    padding: 20,
     paddingTop: 70,
     backgroundColor: '#DAE2FF',
   },
-  header: { 
-    alignItems: 'center', 
-    marginBottom: 20 
+  header: {
+    alignItems: 'center',
+    marginBottom: 20,
   },
-  profileImage: { 
-    width: 150, 
-    height: 150, 
-    borderRadius: 75, 
-    marginBottom: 10 
+  profileImage: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    marginBottom: 10,
   },
   nameWrapper: {
     flexDirection: 'row',
@@ -209,20 +215,25 @@ const styles = StyleSheet.create({
     fontSize: 20,
     marginRight: 8,
   },
-  name: { 
-    fontSize: 24, 
+  name: {
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#333'
+    color: '#333',
   },
-  email: { 
+  email: {
     fontSize: 16,
-    color: '#333'
+    color: '#333',
   },
-  contentSection: { 
-    flex: 1 
+  verifyWarning: {
+    fontSize: 13,
+    color: '#e65100',
+    marginTop: 4,
   },
-  section: { 
-    marginBottom: 20
+  contentSection: {
+    flex: 1,
+  },
+  section: {
+    marginBottom: 20,
   },
   friendsSection: {
     backgroundColor: '#E8F4FF',
@@ -239,30 +250,30 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
   },
-  sectionTitle: { 
-    fontSize: 18, 
-    fontWeight: 'bold', 
-    marginBottom: 10, 
-    color: '#333'
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
   },
-  sectionContent: { 
-    fontSize: 16 
+  sectionContent: {
+    fontSize: 16,
   },
   friendsRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  friendsContainer: { 
+  friendsContainer: {
     paddingRight: 10,
     alignItems: 'center',
   },
-  friendItem: { 
-    marginRight: 10 
+  friendItem: {
+    marginRight: 10,
   },
-  friendAvatar: { 
-    width: 50, 
-    height: 50, 
-    borderRadius: 25 
+  friendAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
   },
   moreBubble: {
     width: 50,

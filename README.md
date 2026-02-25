@@ -7,42 +7,106 @@ UBConnect is a social app designed exclusively for UBC students to connect and c
 
 ---
 
+## Getting Started
+
+### Prerequisites
+- **Node.js** ≥ 18 and **npm**
+- **Expo CLI** (`npx expo`)
+- A Firebase project with Firestore and Authentication enabled
+
+### Environment Setup
+1. Copy the environment template:
+   ```bash
+   cp .env.example .env
+   ```
+2. Fill in your Firebase project values in `.env` (from the Firebase console → Project Settings → General → Your apps):
+   - `EXPO_PUBLIC_FIREBASE_API_KEY`
+   - `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`
+   - `EXPO_PUBLIC_FIREBASE_PROJECT_ID`
+   - `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET`
+   - `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+   - `EXPO_PUBLIC_FIREBASE_APP_ID`
+   - `EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID` (optional)
+   - `EXPO_PUBLIC_SENTRY_DSN` (optional — telemetry is no-op when missing)
+
+3. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+4. Start the dev server:
+   ```bash
+   npx expo start
+   ```
+
+### Running Tests
+```bash
+# All unit tests
+npm test
+
+# Firestore rules tests (requires Firebase emulator)
+npm run test:rules
+```
+
+---
+
 ## Features
 
 ### Core Features
-- **Mutual Connections:** See if you have mutual friends with other users.
-- **Add Friends:** Build a network by adding friends within the app.
-- **UBC Student Verification:** Register with your UBC email to ensure the app remains exclusive to UBC students.
-- **Privacy Controls:** Share posts with the public or limit them to your friends only.
-- **Recurring Events:** Schedule and manage recurring events (e.g., Volleyball every Tuesday at 6 PM).
-- **Profiles:** Create detailed profiles, including contact information (optional).
-- **Comments and Reactions:** Interact with posts through comments and reactions.
-- **Post Activities:** Share activities with details like time, location, and description (e.g., “Looking for 2 people to go axe throwing this Friday at 7 PM!”).
+- **UBC Student Verification:** Register with your UBC email (`@student.ubc.ca` or `@ubc.ca`) to ensure the app remains exclusive to UBC students.
+- **Email Verification:** Firebase email verification gating for posting events.
+- **Post Activities:** Share activities with details like time, location, description, category, and visibility.
+- **Explore Events:** Browse and search activities posted by other UBC students.
+- **Map Integration:** See event locations on an interactive native map.
+- **Privacy Controls:** Share posts as public or friends-only.
+- **Profiles:** View and edit your profile, including interests.
+- **Comments:** Interact with event posts through comments.
 
 ### Engagement and Recommendations
 - **Activity Categories:** Organize posts into categories based on interests.
-- **Interest & Location-Based Recommendations:** Discover activities and users based on shared interests and proximity.
-- **Community Feed:** A relaxed, student-focused feed inspired by r/UBC.
-- **Virtual Group Study:** Collaborate and study with peers online.
-- **Idea Voting:** Allow users to propose and vote on new features or activities.
+- **Community Feed:** A relaxed, student-focused feed.
 
 ### Enhanced User Experience
-- **Friends Page:** View and manage your friends.
-- **Map Integration:** See event locations on an interactive map.
 - **Explore Page:** Discover trending or recommended activities.
-- **Feed Interaction:** See what posts your friends like.
+- **Map View:** See UBC campus event locations on a native map.
 
 ---
 
 ## Tech Stack
 
 ### Front-End
-- **Framework:** React Native
+- **Framework:** React Native (Expo / Expo Router)
 - **Purpose:** Provides a seamless and intuitive mobile user interface.
 
 ### Back-End
 - **Platform:** Firebase
-  - **Authentication:** Ensures secure, UBC email-verified registration.
-  - **Database:** Manages user data, posts, comments, and activity metadata.
+  - **Authentication:** Secure, UBC email-verified registration.
+  - **Database (Firestore):** Manages events, user data, and metadata.
+  - **Security Rules:** Server-side validation for data integrity.
 
 ---
+
+## Project Structure
+```
+├── app/
+│   ├── _layout.tsx          # Root layout with AuthProvider
+│   ├── landing.tsx          # Landing page (login/signup)
+│   ├── (auth)/              # Auth screens
+│   │   ├── login.tsx
+│   │   └── signup.tsx
+│   ├── (tabs)/              # Main app tabs
+│   │   ├── explore.tsx      # Browse events
+│   │   ├── posting.tsx      # Create events
+│   │   ├── map.tsx          # Native map view
+│   │   ├── profile.tsx      # User profile
+│   │   └── notifications.tsx
+│   └── edit-profile.tsx
+├── components/models/
+│   └── ConnectEvent.tsx     # Schema, validation, mapping
+├── src/
+│   ├── auth/AuthContext.tsx  # Auth state management
+│   └── telemetry/index.ts   # Monitoring hooks
+├── firebaseConfig.js        # Single Firebase initialization
+├── firestore.rules          # Security rules
+└── firebase.json            # Emulator config
+```
