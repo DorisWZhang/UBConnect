@@ -3,36 +3,213 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ----------------------------------------------------------------
-    // connectEvents — the main events collection
-    // ----------------------------------------------------------------
+    // ================================================================
+    // Helper functions
+    // ================================================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ================================================================
+    // users/{uid} — User profiles
+    // ================================================================
+    match /users/{uid} {
+      // Any verified user can read any profile
+      allow read: if isVerified();
+
+      // Users can only create/update their own profile
+      allow create: if isOwner(uid)
+                    && request.resource.data.keys().hasOnly([
+                         'displayName', 'photoURL', 'bio', 'program',
+                         'year', 'interests', 'createdAt', 'lastActiveAt'
+                       ])
+                    && request.resource.data.displayName is string
+                    && request.resource.data.displayName.size() >= 1
+                    && request.resource.data.displayName.size() <= 50;
+
+      allow update: if isOwner(uid)
+                    && request.resource.data.keys().hasOnly([
+                         'displayName', 'photoURL', 'bio', 'program',
+                         'year', 'interests', 'createdAt', 'lastActiveAt'
+                       ])
+                    && request.resource.data.displayName is string
+                    && request.resource.data.displayName.size() >= 1
+                    && request.resource.data.displayName.size() <= 50
+                    && (!('bio' in request.resource.data) || request.resource.data.bio.size() <= 300);
+
+      allow delete: if false; // profiles are not deletable
+
+      // ------ friends subcollection ------
+      match /friends/{friendUid} {
+        // Any verified user can see anyone's friend list
+        allow read: if isVerified();
+
+        // A user can only create their own friend edge,
+        // and only if an accepted friendRequest exists.
+        allow create: if isOwner(uid)
+                      && request.resource.data.friendUid == friendUid
+                      && request.resource.data.keys().hasOnly(['friendUid', 'since', 'createdAt'])
+                      && (
+                           (
+                             // Case 1: I sent the request (I am fromUid)
+                             exists(/databases/$(database)/documents/friendRequests/$(uid + '_' + friendUid))
+                             && get(/databases/$(database)/documents/friendRequests/$(uid + '_' + friendUid)).data.status == 'accepted'
+                           ) || (
+                             // Case 2: They sent the request (I am toUid)
+                             exists(/databases/$(database)/documents/friendRequests/$(friendUid + '_' + uid))
+                             && get(/databases/$(database)/documents/friendRequests/$(friendUid + '_' + uid)).data.status == 'accepted'
+                           )
+                         );
+
+        // A user can only delete their own friend edge
+        allow delete: if isOwner(uid);
+
+        allow update: if false;
+      }
+    }
+
+    // ================================================================
+    // friendRequests/{fromUid}_{toUid}
+    // ================================================================
+    match /friendRequests/{requestId} {
+      // Both sender and receiver can read their requests
+      allow read: if isVerified()
+                  && (request.auth.uid == resource.data.fromUid
+                      || request.auth.uid == resource.data.toUid);
+
+      // Create: only the sender, deterministic ID, status must be 'pending'
+      allow create: if isVerified()
+                    && request.resource.data.fromUid == request.auth.uid
+                    && requestId == (request.resource.data.fromUid + '_' + request.resource.data.toUid)
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.keys().hasOnly([
+                         'fromUid', 'toUid', 'status', 'createdAt', 'respondedAt'
+                       ]);
+
+      // Update: status transitions only
+      allow update: if isVerified()
+                    && request.resource.data.fromUid == resource.data.fromUid
+                    && request.resource.data.toUid == resource.data.toUid
+                    && request.resource.data.createdAt == resource.data.createdAt
+                    && (
+                         // toUid can accept or reject from pending
+                         (request.auth.uid == resource.data.toUid
+                          && resource.data.status == 'pending'
+                          && request.resource.data.status in ['accepted', 'rejected'])
+                         ||
+                         // fromUid can cancel from pending
+                         (request.auth.uid == resource.data.fromUid
+                          && resource.data.status == 'pending'
+                          && request.resource.data.status == 'cancelled')
+                       );
+
+      allow delete: if false;
+    }
+
+    // ================================================================
+    // connectEvents/{eventId}
+    // ================================================================
     match /connectEvents/{eventId} {
 
-      // Read: any authenticated user with a verified email
-      allow read: if request.auth != null
-                  && request.auth.token.email_verified == true;
+      // Read: verified user + visibility check
+      allow read: if isVerified()
+                  && (
+                       resource.data.visibility == 'public'
+                       || resource.data.createdBy == request.auth.uid
+                       || (resource.data.visibility == 'friends'
+                           && exists(/databases/$(database)/documents/users/$(resource.data.createdBy)/friends/$(request.auth.uid)))
+                     );
 
-      // Create: verified user, createdBy must match uid, required fields present
-      allow create: if request.auth != null
-                    && request.auth.token.email_verified == true
+      // Create: verified, createdBy = uid, required fields, schema
+      allow create: if isVerified()
                     && request.resource.data.createdBy == request.auth.uid
                     && request.resource.data.title is string
                     && request.resource.data.title.size() > 0
+                    && request.resource.data.title.size() <= 200
+                    && request.resource.data.description is string
+                    && request.resource.data.description.size() > 0
+                    && request.resource.data.description.size() <= 2000
+                    && request.resource.data.visibility in ['public', 'friends'];
+
+      // Update: only creator, cannot change createdBy
+      allow update: if isVerified()
+                    && resource.data.createdBy == request.auth.uid
+                    && request.resource.data.createdBy == request.auth.uid
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() > 0
+                    && request.resource.data.title.size() <= 200
                     && request.resource.data.description is string
                     && request.resource.data.description.size() > 0;
 
-      // Update: only the creator can update their own event
-      allow update: if request.auth != null
-                    && request.auth.token.email_verified == true
-                    && resource.data.createdBy == request.auth.uid
-                    && request.resource.data.createdBy == request.auth.uid;
-
-      // Delete: only the creator
-      allow delete: if request.auth != null
+      // Delete: only creator, must be verified
+      allow delete: if isVerified()
                     && resource.data.createdBy == request.auth.uid;
+
+      // ------ comments subcollection ------
+      match /comments/{commentId} {
+        // Read: user must be able to read the parent event
+        allow read: if isVerified()
+                    && (
+                         get(/databases/$(database)/documents/connectEvents/$(eventId)).data.visibility == 'public'
+                         || get(/databases/$(database)/documents/connectEvents/$(eventId)).data.createdBy == request.auth.uid
+                         || (get(/databases/$(database)/documents/connectEvents/$(eventId)).data.visibility == 'friends'
+                             && exists(/databases/$(database)/documents/users/$(get(/databases/$(database)/documents/connectEvents/$(eventId)).data.createdBy)/friends/$(request.auth.uid)))
+                       );
+
+        // Create: verified, createdBy = uid, text 1-500 chars
+        allow create: if isVerified()
+                      && request.resource.data.createdBy == request.auth.uid
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() >= 1
+                      && request.resource.data.text.size() <= 500
+                      && request.resource.data.keys().hasOnly([
+                           'text', 'createdAt', 'createdBy', 'createdByName'
+                         ])
+                      // Must be able to read parent event
+                      && (
+                           get(/databases/$(database)/documents/connectEvents/$(eventId)).data.visibility == 'public'
+                           || get(/databases/$(database)/documents/connectEvents/$(eventId)).data.createdBy == request.auth.uid
+                           || (get(/databases/$(database)/documents/connectEvents/$(eventId)).data.visibility == 'friends'
+                               && exists(/databases/$(database)/documents/users/$(get(/databases/$(database)/documents/connectEvents/$(eventId)).data.createdBy)/friends/$(request.auth.uid)))
+                         );
+
+        allow update: if false;
+
+        // Delete: only comment author
+        allow delete: if isVerified()
+                      && resource.data.createdBy == request.auth.uid;
+      }
+
+      // ------ rsvps subcollection ------
+      match /rsvps/{rsvpUid} {
+        // Read: same as parent event
+        allow read: if isVerified()
+                    && (
+                         get(/databases/$(database)/documents/connectEvents/$(eventId)).data.visibility == 'public'
+                         || get(/databases/$(database)/documents/connectEvents/$(eventId)).data.createdBy == request.auth.uid
+                         || (get(/databases/$(database)/documents/connectEvents/$(eventId)).data.visibility == 'friends'
+                             && exists(/databases/$(database)/documents/users/$(get(/databases/$(database)/documents/connectEvents/$(eventId)).data.createdBy)/friends/$(request.auth.uid)))
+                       );
+
+        // Write: verified, doc ID must be uid, valid status
+        allow create, update: if isVerified()
+                      && rsvpUid == request.auth.uid
+                      && request.resource.data.status in ['going', 'interested']
+                      && request.resource.data.keys().hasOnly(['status', 'createdAt']);
+
+        allow delete: if isVerified() && rsvpUid == request.auth.uid;
+      }
     }
 
-    // Deny everything else by default
+    // Default deny everything else
     match /{document=**} {
       allow read, write: if false;
     }
