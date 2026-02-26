@@ -312,25 +312,40 @@ export default function FriendsPage() {
                                 <Text style={styles.emptyText}>No users found</Text>
                             ) : null
                         }
-                        renderItem={({ item }) => (
-                            <TouchableOpacity
-                                style={styles.listItem}
-                                onPress={() => router.push(`/profile/${item.uid}`)}
-                            >
-                                <View style={styles.listAvatar}>
-                                    <Text style={styles.listAvatarText}>
-                                        {item.displayName.charAt(0).toUpperCase()}
-                                    </Text>
-                                </View>
-                                <Text style={styles.listName}>{item.displayName}</Text>
+                        renderItem={({ item }) => {
+                            const isFriend = friends.some((f) => f.friendUid === item.uid);
+                            const hasOutgoing = outgoing.some((r) => r.toUid === item.uid);
+                            const hasIncoming = incoming.some((r) => r.fromUid === item.uid);
+
+                            return (
                                 <TouchableOpacity
-                                    style={styles.addBtn}
-                                    onPress={() => handleAddFriend(item.uid)}
+                                    style={styles.listItem}
+                                    onPress={() => router.push(`/profile/${item.uid}`)}
                                 >
-                                    <Ionicons name="person-add-outline" size={20} color="#866FD8" />
+                                    <View style={styles.listAvatar}>
+                                        <Text style={styles.listAvatarText}>
+                                            {item.displayName.charAt(0).toUpperCase()}
+                                        </Text>
+                                    </View>
+                                    <Text style={styles.listName}>{item.displayName}</Text>
+                                    <TouchableOpacity
+                                        style={styles.addBtn}
+                                        onPress={() => handleAddFriend(item.uid)}
+                                        disabled={isFriend || hasOutgoing}
+                                    >
+                                        {isFriend ? (
+                                            <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+                                        ) : hasOutgoing ? (
+                                            <Ionicons name="time-outline" size={24} color="#866FD8" />
+                                        ) : hasIncoming ? (
+                                            <Ionicons name="arrow-undo-circle" size={24} color="#FF9800" />
+                                        ) : (
+                                            <Ionicons name="person-add-outline" size={20} color="#866FD8" />
+                                        )}
+                                    </TouchableOpacity>
                                 </TouchableOpacity>
-                            </TouchableOpacity>
-                        )}
+                            );
+                        }}
                     />
                 </View>
             )}

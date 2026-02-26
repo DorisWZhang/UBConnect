@@ -175,6 +175,18 @@ export async function fetchUserProfile(uid: string): Promise<UserProfile | null>
 // ================================================================
 
 export async function sendFriendRequest(fromUid: string, toUid: string, actorName?: string): Promise<void> {
+    // Check if there is already an incoming request from this user
+    const status = await getFriendStatus(fromUid, toUid);
+    if (status === 'friends') {
+        throw new Error('Already friends');
+    }
+    if (status === 'pending_received') {
+        // They already sent us a request! Auto-accept it.
+        // The original sender was toUid, and the original receiver was fromUid.
+        await acceptFriendRequest(toUid, fromUid);
+        return;
+    }
+
     const id = makeFriendRequestId(fromUid, toUid);
     const ref = doc(db, 'friendRequests', id);
     try {
@@ -210,6 +222,17 @@ export async function acceptFriendRequest(fromUid: string, toUid: string): Promi
             status: 'accepted',
             respondedAt: serverTimestamp(),
         });
+
+        // Resolve reciprocal request if it exists (e.g. mutual simultaneous requests)
+        const reciprocalId = makeFriendRequestId(toUid, fromUid);
+        const reciprocalRef = doc(db, 'friendRequests', reciprocalId);
+        const reciprocalSnap = await getDoc(reciprocalRef);
+        if (reciprocalSnap.exists() && reciprocalSnap.data()?.status === 'pending') {
+            batch.update(reciprocalRef, {
+                status: 'accepted',
+                respondedAt: serverTimestamp(),
+            });
+        }
 
         // Create BOTH friend edges in the same batch
         // toUid adds fromUid as friend
