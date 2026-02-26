@@ -8,6 +8,7 @@ import {
     sendEmailVerification,
     User,
 } from 'firebase/auth';
+import { AppState, AppStateStatus } from 'react-native';
 import { auth } from '../../firebaseConfig';
 import { captureException, logEvent } from '../telemetry';
 
@@ -56,7 +57,32 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
             setUser(u);
             setLoading(false);
         });
-        return unsubscribe;
+
+        // Force token refresh on app foreground if the user is unverified
+        // This handles the case where they click the email link in a browser
+        // and come back to the app. Firebase Auth caches the old unverified token for 1 hr.
+        const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+            if (nextAppState === 'active') {
+                const currentUser = auth.currentUser;
+                if (currentUser && !currentUser.emailVerified) {
+                    try {
+                        await currentUser.reload();
+                        // This updates the local token claim, which the `(protected)` gateway relies on
+                        await currentUser.getIdToken(true);
+                        setUser({ ...currentUser } as User); // force re-render
+                    } catch (e) {
+                        // ignore silently
+                    }
+                }
+            }
+        };
+
+        const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+        return () => {
+            unsubscribe();
+            subscription.remove();
+        };
     }, []);
 
     const signUp = async (email: string, password: string) => {

@@ -74,20 +74,22 @@ service cloud.firestore {
         // Any authorized user can see anyone's friend list
         allow read: if isAuthorized();
 
-        // A user can only create their own friend edge,
-        // and only if an accepted friendRequest exists.
-        allow create: if isOwner(uid)
-                      && request.resource.data.friendUid == friendUid
+        // A user can create a friend edge in ANY user's collection, AS LONG AS
+        // they are one of the two parties in an ACCEPTED friendRequest.
+        // This is necessary because when A accepts B's request, A must write to B's subcollection.
+        allow create: if isAuthorized()
                       && request.resource.data.keys().hasOnly(['friendUid', 'since', 'createdAt'])
+                      // If writing to uid=A, friendUid=B
+                      // The current user must be A or B
+                      && (request.auth.uid == uid || request.auth.uid == request.resource.data.friendUid)
+                      // And there must be an accepted request between them
                       && (
                            (
-                             // Case 1: I sent the request (I am fromUid) — use getAfter for batch
-                             existsAfter(/databases/$(database)/documents/friendRequests/$(uid + '_' + friendUid))
-                             && getAfter(/databases/$(database)/documents/friendRequests/$(uid + '_' + friendUid)).data.status == 'accepted'
+                             existsAfter(/databases/$(database)/documents/friendRequests/$(uid + '_' + request.resource.data.friendUid))
+                             && getAfter(/databases/$(database)/documents/friendRequests/$(uid + '_' + request.resource.data.friendUid)).data.status == 'accepted'
                            ) || (
-                             // Case 2: They sent the request (I am toUid) — use getAfter for batch
-                             existsAfter(/databases/$(database)/documents/friendRequests/$(friendUid + '_' + uid))
-                             && getAfter(/databases/$(database)/documents/friendRequests/$(friendUid + '_' + uid)).data.status == 'accepted'
+                             existsAfter(/databases/$(database)/documents/friendRequests/$(request.resource.data.friendUid + '_' + uid))
+                             && getAfter(/databases/$(database)/documents/friendRequests/$(request.resource.data.friendUid + '_' + uid)).data.status == 'accepted'
                            )
                          );
 
@@ -140,11 +142,9 @@ service cloud.firestore {
                          'fromUid', 'toUid', 'status', 'createdAt', 'respondedAt'
                        ]);
 
-      // Update: status transitions only
+      // Update: status transitions only using diff
       allow update: if isAuthorized()
-                    && request.resource.data.fromUid == resource.data.fromUid
-                    && request.resource.data.toUid == resource.data.toUid
-                    && request.resource.data.createdAt == resource.data.createdAt
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'respondedAt'])
                     && (
                          // toUid can accept or reject from pending
                          (request.auth.uid == resource.data.toUid
@@ -227,19 +227,37 @@ service cloud.firestore {
 
       // ------ rsvps subcollection ------
       match /rsvps/{rsvpUid} {
-        // Read: same as parent event
+        // Read: same as parent event for normal queries
         allow read: if isAuthorized() && canReadEvent(eventId);
 
         // Write: authorized, doc ID must be uid, valid status
-        allow create, update: if isAuthorized()
+        // Create must have all fields. Update must only modify status/createdAt.
+        allow create: if isAuthorized()
                       && rsvpUid == request.auth.uid
                       && request.resource.data.status in ['going', 'interested']
                       && request.resource.data.keys().hasOnly(['userId', 'status', 'createdAt', 'visibilitySnapshot'])
                       && request.resource.data.userId == request.auth.uid
                       && (!('visibilitySnapshot' in request.resource.data) || request.resource.data.visibilitySnapshot == get(/databases/$(database)/documents/connectEvents/$(eventId)).data.visibility);
 
+        allow update: if isAuthorized()
+                      && rsvpUid == request.auth.uid
+                      && request.resource.data.status in ['going', 'interested']
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'createdAt']);
+
         allow delete: if isAuthorized() && rsvpUid == request.auth.uid;
       }
+    }
+
+    // ================================================================
+    // Collection Group Queries
+    // ================================================================
+    match /{path=**}/rsvps/{rsvpUid} {
+      // For fetchUserAttendingEventIds queries, which span multiple events.
+      // We cannot realistically check `canReadEvent(eventId)` for a massive group query.
+      // Instead, we ensure the query filters strictly on visibilitySnapshot == 'public' OR the user is querying their own RSVPs.
+      allow read: if isAuthorized() && (
+        request.auth.uid == rsvpUid || resource.data.visibilitySnapshot == 'public'
+      );
     }
 
     // Default deny everything else

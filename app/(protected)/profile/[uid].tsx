@@ -46,7 +46,7 @@ export default function ProfileViewScreen() {
             }
 
             try {
-                const hosted = await fetchEventsByCreator(uid);
+                const hosted = await fetchEventsByCreator(uid, { viewerUid: user?.uid });
                 setHostedEvents(hosted);
             } catch (err) {
                 if (isFailedPrecondition(err)) {
@@ -84,7 +84,7 @@ export default function ProfileViewScreen() {
         try {
             switch (friendStatus) {
                 case 'none':
-                    await sendFriendRequest(user.uid, uid);
+                    await sendFriendRequest(user.uid, uid, user.displayName || undefined);
                     setFriendStatus('pending_sent');
                     // Create notification
                     await createNotification({

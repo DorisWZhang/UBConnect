@@ -583,12 +583,28 @@ export async function fetchEventById(eventId: string): Promise<ConnectEvent | nu
 
 export async function fetchEventsByCreator(
     uid: string,
-    options: { pageSize?: number } = {},
+    options: { pageSize?: number; viewerUid?: string } = {},
 ): Promise<ConnectEvent[]> {
-    const { pageSize = 20 } = options;
+    const { pageSize = 20, viewerUid } = options;
+    const isSelf = viewerUid === uid;
+
     try {
         const ref = collection(db, 'connectEvents');
-        const q = query(ref, where('createdBy', '==', uid), orderBy('createdAt', 'desc'), limit(pageSize));
+        const constraints: any[] = [
+            where('createdBy', '==', uid)
+        ];
+
+        // If not looking at own profile, you only have static read access to public events.
+        // Even if we are friends, querying the whole collection by 'createdBy' will throw Permission Denied
+        // unless we constrain the query to exactly match a rule we have access to via a static query filter.
+        if (!isSelf) {
+            constraints.push(where('visibility', '==', 'public'));
+        }
+
+        constraints.push(orderBy('createdAt', 'desc'));
+        constraints.push(limit(pageSize));
+
+        const q = query(ref, ...constraints);
         const snap = await getDocs(q);
         return snap.docs.map((d) => fromFirestoreDoc(d.id, d.data())).filter(Boolean) as ConnectEvent[];
     } catch (error) {
