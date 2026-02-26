@@ -43,7 +43,7 @@ export function isFailedPrecondition(error: unknown): boolean {
 
 export function getFirestoreErrorMessage(error: unknown): string {
     if (isPermissionDenied(error)) {
-        return 'You do not have permission to perform this action. Please verify your email.';
+        return 'You do not have permission to perform this action. If you believe this is an error, try logging out and back in to refresh your token.';
     }
     if (isFailedPrecondition(error)) {
         const msg = (error as any).message || '';

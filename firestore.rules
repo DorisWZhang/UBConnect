@@ -144,7 +144,7 @@ service cloud.firestore {
 
       // Update: status transitions only using diff
       allow update: if isAuthorized()
-                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'respondedAt'])
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'respondedAt', 'createdAt'])
                     && (
                          // toUid can accept or reject from pending
                          (request.auth.uid == resource.data.toUid
@@ -155,6 +155,11 @@ service cloud.firestore {
                          (request.auth.uid == resource.data.fromUid
                           && resource.data.status == 'pending'
                           && request.resource.data.status == 'cancelled')
+                         ||
+                         // fromUid can re-send if previously cancelled or rejected
+                         (request.auth.uid == resource.data.fromUid
+                          && resource.data.status in ['cancelled', 'rejected']
+                          && request.resource.data.status == 'pending')
                        );
 
       allow delete: if false;
