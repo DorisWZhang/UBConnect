@@ -15,6 +15,20 @@
             ]
         },
         {
+            "collectionGroup": "connectEvents",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "visibility",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "titleLower",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
             "collectionGroup": "friendRequests",
             "queryScope": "COLLECTION",
             "fields": [

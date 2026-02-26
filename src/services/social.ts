@@ -985,6 +985,7 @@ export async function searchEvents(
         const ref = collection(db, 'connectEvents');
         const q = query(
             ref,
+            where('visibility', '==', 'public'),
             where('titleLower', '>=', lower),
             where('titleLower', '<=', lower + '\uf8ff'),
             orderBy('titleLower'),
