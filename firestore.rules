@@ -156,9 +156,9 @@ service cloud.firestore {
                           && resource.data.status == 'pending'
                           && request.resource.data.status == 'cancelled')
                          ||
-                         // fromUid can re-send if previously cancelled or rejected
+                         // fromUid can re-send if previously cancelled or rejected, or is an idempotent resend
                          (request.auth.uid == resource.data.fromUid
-                          && resource.data.status in ['cancelled', 'rejected']
+                          && resource.data.status in ['pending', 'cancelled', 'rejected']
                           && request.resource.data.status == 'pending')
                        );
 

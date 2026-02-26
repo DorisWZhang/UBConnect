@@ -13,11 +13,16 @@ import {
     listFriends, FriendEdge, fetchIncomingRequests, fetchOutgoingRequests,
     acceptFriendRequest, rejectFriendRequest, cancelFriendRequest,
     searchUsers, sendFriendRequest, removeFriend, ensureFriendEdge,
-    isPermissionDenied,
+    isPermissionDenied, fetchUserProfile,
 } from '@/src/services/social';
 import { captureException } from '@/src/telemetry';
 
 type Tab = 'friends' | 'requests' | 'search';
+
+interface PopulatedFriendRequest extends FriendRequest {
+    _type: 'incoming' | 'outgoing';
+    displayName?: string;
+}
 
 export default function FriendsPage() {
     const { user } = useAuth();
@@ -29,8 +34,8 @@ export default function FriendsPage() {
     const [friendsLoading, setFriendsLoading] = useState(true);
 
     // Requests
-    const [incoming, setIncoming] = useState<FriendRequest[]>([]);
-    const [outgoing, setOutgoing] = useState<FriendRequest[]>([]);
+    const [incoming, setIncoming] = useState<PopulatedFriendRequest[]>([]);
+    const [outgoing, setOutgoing] = useState<PopulatedFriendRequest[]>([]);
     const [requestsLoading, setRequestsLoading] = useState(false);
 
     // Search
@@ -59,8 +64,29 @@ export default function FriendsPage() {
                 fetchIncomingRequests(user.uid),
                 fetchOutgoingRequests(user.uid),
             ]);
-            setIncoming(inc);
-            setOutgoing(out);
+
+            // Populate display names
+            const populate = async (reqs: FriendRequest[], type: 'incoming' | 'outgoing') => {
+                const populated: PopulatedFriendRequest[] = [];
+                for (const r of reqs) {
+                    const targetUid = type === 'incoming' ? r.fromUid : r.toUid;
+                    try {
+                        const prof = await fetchUserProfile(targetUid);
+                        populated.push({ ...r, _type: type, displayName: prof?.displayName });
+                    } catch (e) {
+                        populated.push({ ...r, _type: type });
+                    }
+                }
+                return populated;
+            };
+
+            const [incPop, outPop] = await Promise.all([
+                populate(inc, 'incoming'),
+                populate(out, 'outgoing')
+            ]);
+
+            setIncoming(incPop);
+            setOutgoing(outPop);
         } catch (err) {
             captureException(err, { flow: 'loadRequests' });
         } finally {
@@ -133,9 +159,9 @@ export default function FriendsPage() {
             await sendFriendRequest(user.uid, targetUid, user.displayName || undefined);
             Alert.alert('Sent!', 'Friend request sent.');
             loadRequests();
-        } catch (err) {
+        } catch (err: any) {
             if (isPermissionDenied(err)) {
-                Alert.alert('Error', 'Please verify your email.');
+                Alert.alert('Permission Denied', 'Could not send request. This user may not exist, or a request may already exist.');
             } else {
                 Alert.alert('Error', 'Failed to send request.');
             }
@@ -220,10 +246,7 @@ export default function FriendsPage() {
                     <ActivityIndicator size="large" color="#866FD8" style={{ marginTop: 40 }} />
                 ) : (
                     <FlatList
-                        data={[
-                            ...incoming.map((r) => ({ ...r, _type: 'incoming' as const })),
-                            ...outgoing.map((r) => ({ ...r, _type: 'outgoing' as const })),
-                        ]}
+                        data={[...incoming, ...outgoing]}
                         keyExtractor={(item) => item.id}
                         ListEmptyComponent={
                             <View style={styles.emptyState}>
@@ -234,7 +257,7 @@ export default function FriendsPage() {
                             <View style={styles.requestItem}>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.listName}>
-                                        {item._type === 'incoming' ? item.fromUid : item.toUid}
+                                        {item.displayName || (item._type === 'incoming' ? item.fromUid : item.toUid)}
                                     </Text>
                                     <Text style={styles.requestType}>
                                         {item._type === 'incoming' ? 'Incoming request' : 'Sent request'}
