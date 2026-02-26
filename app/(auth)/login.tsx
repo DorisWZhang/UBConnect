@@ -35,7 +35,7 @@ export default function LoginScreen() {
         setLoading(true);
         try {
             await logIn(email.trim(), password);
-            router.replace('/(tabs)/explore');
+            router.replace('/(protected)/(tabs)/explore');
         } catch (err: any) {
             setNotice({ message: friendlyAuthError(err), type: 'error' });
         } finally {
