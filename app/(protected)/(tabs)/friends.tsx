@@ -24,13 +24,17 @@ interface PopulatedFriendRequest extends FriendRequest {
     displayName?: string;
 }
 
+interface PopulatedFriendEdge extends FriendEdge {
+    displayName?: string;
+}
+
 export default function FriendsPage() {
     const { user } = useAuth();
     const router = useRouter();
     const [tab, setTab] = useState<Tab>('friends');
 
     // Friends
-    const [friends, setFriends] = useState<FriendEdge[]>([]);
+    const [friends, setFriends] = useState<PopulatedFriendEdge[]>([]);
     const [friendsLoading, setFriendsLoading] = useState(true);
 
     // Requests
@@ -48,7 +52,17 @@ export default function FriendsPage() {
         setFriendsLoading(true);
         try {
             const result = await listFriends(user.uid);
-            setFriends(result);
+            const populated = await Promise.all(
+                result.map(async (f) => {
+                    try {
+                        const prof = await fetchUserProfile(f.friendUid);
+                        return { ...f, displayName: prof?.displayName };
+                    } catch (e) {
+                        return f;
+                    }
+                })
+            );
+            setFriends(populated);
         } catch (err) {
             captureException(err, { flow: 'loadFriends' });
         } finally {
@@ -224,10 +238,10 @@ export default function FriendsPage() {
                             >
                                 <View style={styles.listAvatar}>
                                     <Text style={styles.listAvatarText}>
-                                        {item.friendUid.charAt(0).toUpperCase()}
+                                        {(item.displayName || item.friendUid).charAt(0).toUpperCase()}
                                     </Text>
                                 </View>
-                                <Text style={styles.listName}>{item.friendUid}</Text>
+                                <Text style={styles.listName}>{item.displayName || item.friendUid}</Text>
                                 <TouchableOpacity
                                     onPress={() => handleRemoveFriend(item.friendUid)}
                                     style={styles.removeBtn}
