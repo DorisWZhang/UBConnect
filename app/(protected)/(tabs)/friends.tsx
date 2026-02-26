@@ -238,10 +238,10 @@ export default function FriendsPage() {
                             >
                                 <View style={styles.listAvatar}>
                                     <Text style={styles.listAvatarText}>
-                                        {(item.displayName || item.friendUid).charAt(0).toUpperCase()}
+                                        {(item.displayName || 'Unknown User').charAt(0).toUpperCase()}
                                     </Text>
                                 </View>
-                                <Text style={styles.listName}>{item.displayName || item.friendUid}</Text>
+                                <Text style={styles.listName}>{item.displayName || 'Unknown User'}</Text>
                                 <TouchableOpacity
                                     onPress={() => handleRemoveFriend(item.friendUid)}
                                     style={styles.removeBtn}
@@ -271,7 +271,7 @@ export default function FriendsPage() {
                             <View style={styles.requestItem}>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.listName}>
-                                        {item.displayName || (item._type === 'incoming' ? item.fromUid : item.toUid)}
+                                        {item.displayName || 'Unknown User'}
                                     </Text>
                                     <Text style={styles.requestType}>
                                         {item._type === 'incoming' ? 'Incoming request' : 'Sent request'}
