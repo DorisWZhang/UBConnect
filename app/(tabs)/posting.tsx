@@ -1,260 +1,305 @@
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
+// app/(tabs)/posting.tsx — Create event with location input and categories
 import React, { useState } from 'react';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import RNPickerSelect from 'react-native-picker-select';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../firebaseConfig';
+import {
+  View, Text, StyleSheet, TextInput, ScrollView,
+  TouchableOpacity, Alert, ActivityIndicator, Platform,
+} from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+
+// Conditionally import DateTimePicker to avoid Web crashes
+let DateTimePicker: any = null;
+if (Platform.OS !== 'web') {
+  DateTimePicker = require('@react-native-community/datetimepicker').default;
+}
+
+import { useRouter } from 'expo-router';
 import { useAuth } from '@/src/auth/AuthContext';
+import { useProfile } from '../ProfileContext';
 import { validateEvent } from '@/components/models/ConnectEvent';
-import { captureException, logEvent } from '@/src/telemetry';
+import { createEvent, isPermissionDenied } from '@/src/services/social';
+import { logEvent } from '@/src/telemetry';
+
+const CATEGORIES = [
+  'Sports', 'Esports', 'Music', 'Arts', 'Food',
+  'Academic', 'Social', 'Volunteering', 'Outdoors', 'Fitness',
+];
+
+const VISIBILITY_OPTIONS = ['public', 'friends'] as const;
 
 export default function PostingPage() {
+  const router = useRouter();
   const { user } = useAuth();
+  const { name } = useProfile();
 
-  const [eventName, setEventName] = useState('');
-  const [startDateTime, setStartDateTime] = useState<Date | null>(null);
-  const [endDateTime, setEndDateTime] = useState<Date | null>(null);
-  const [pickerConfig, setPickerConfig] = useState({
-    show: false,
-    mode: 'datetime' as const,
-    type: '' as 'startDateTime' | 'endDateTime' | '',
-  });
-  const [location, setLocation] = useState('');
+  const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [categoryId, setCategoryId] = useState('');
   const [visibility, setVisibility] = useState<'public' | 'friends'>('public');
+  const [locationName, setLocationName] = useState('');
   const [capacity, setCapacity] = useState('');
-  const [category, setCategory] = useState('');
 
-  const formatDateTime = (date: Date | null) => {
-    if (!date) return '';
-    return `${date.toLocaleDateString('en-US')} ${date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    })}`;
-  };
+  // Date/Time
+  const [startDate, setStartDate] = useState(new Date());
+  const [endDate, setEndDate] = useState(new Date(Date.now() + 2 * 60 * 60 * 1000)); // +2h
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
 
-  const handlePickerPress = (type: 'startDateTime' | 'endDateTime') => {
-    setPickerConfig({ show: true, mode: 'datetime', type });
-  };
-
-  const handlePickerChange = (event: any, selectedDate?: Date) => {
-    if (event.type === 'set' && selectedDate) {
-      if (pickerConfig.type === 'startDateTime') setStartDateTime(selectedDate);
-      if (pickerConfig.type === 'endDateTime') setEndDateTime(selectedDate);
-    }
-    setPickerConfig({ ...pickerConfig, show: false });
-  };
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
-    // Build the event data object matching our schema
-    const eventData = {
-      title: eventName.trim(),
-      description: description.trim(),
-      location: location.trim(),
-      category: category || '',
-      visibility: visibility || 'public',
-      capacity: capacity ? parseInt(capacity, 10) : null,
-      startAt: startDateTime,
-      endAt: endDateTime,
-      createdBy: user?.uid ?? 'anonymous',
-    };
+    if (!user || !user.emailVerified) {
+      Alert.alert('Verify Email', 'You must verify your email before posting.');
+      return;
+    }
 
-    // Validate before writing
-    const validation = validateEvent(eventData);
+    // Validate
+    const validation = validateEvent({
+      title,
+      description,
+      locationName,
+      capacity: capacity ? Number(capacity) : null,
+      startTime: startDate,
+      endTime: endDate,
+    });
     if (!validation.valid) {
       Alert.alert('Validation Error', validation.errors.join('\n'));
       return;
     }
-
-    // Gate posting behind email verification
-    if (user && !user.emailVerified) {
-      Alert.alert(
-        'Email Not Verified',
-        'Please verify your UBC email before posting events. Check your inbox for the verification link.',
-      );
+    if (!categoryId) {
+      Alert.alert('Category Required', 'Please select a category for your event.');
       return;
     }
 
-    const startTime = Date.now();
+    setSubmitting(true);
     try {
-      await addDoc(collection(db, 'connectEvents'), {
-        ...eventData,
-        createdAt: serverTimestamp(),
+      const eventId = await createEvent({
+        title: title.trim(),
+        description: description.trim(),
+        categoryId,
+        visibility,
+        locationName: locationName.trim(),
+        placeId: '', // no Google Places integration yet
+        locationGeo: null, // will be populated when Places API is added
+        startTime: startDate,
+        endTime: endDate,
+        capacity: capacity ? Number(capacity) : null,
+        createdBy: user.uid,
+        createdByName: name,
       });
 
-      logEvent('posting_success', { latencyMs: Date.now() - startTime });
+      await logEvent('event_created', { eventId, categoryId });
+      Alert.alert('Success!', 'Your event has been posted.', [
+        { text: 'View Event', onPress: () => router.push(`/event/${eventId}`) },
+        { text: 'OK', onPress: () => router.push('/(tabs)/explore') },
+      ]);
 
       // Reset form
-      setEventName('');
-      setStartDateTime(null);
-      setEndDateTime(null);
-      setLocation('');
+      setTitle('');
       setDescription('');
-      setVisibility('public');
+      setCategoryId('');
+      setLocationName('');
       setCapacity('');
-      setCategory('');
-
-      Alert.alert('Success', 'Event created!');
-    } catch (error) {
-      captureException(error, { flow: 'posting', latencyMs: Date.now() - startTime });
-      Alert.alert('Error', 'Failed to create event. Please try again.');
+    } catch (err) {
+      if (isPermissionDenied(err)) {
+        Alert.alert('Permission Denied', 'Please verify your email to post events.');
+      } else {
+        Alert.alert('Error', 'Failed to create event. Please try again.');
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+  };
+
   return (
-    <View style={styles.mainContainer}>
-      <Text style={[styles.title, { fontWeight: '600', marginTop: 100 }]}>Create Event</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+      <Text style={styles.pageTitle}>Create Event</Text>
+
+      {/* Title */}
+      <Text style={styles.label}>Title *</Text>
       <TextInput
         style={styles.input}
-        placeholder="Event Name"
+        value={title}
+        onChangeText={setTitle}
+        placeholder="What's happening?"
+        maxLength={80}
         placeholderTextColor="#aaa"
-        value={eventName}
-        onChangeText={setEventName}
       />
-
-      {/* Start Date and Time */}
-      <TouchableOpacity onPress={() => handlePickerPress('startDateTime')}>
-        <TextInput
-          style={[styles.input, { color: startDateTime ? '#333' : '#aaa' }]}
-          value={startDateTime ? formatDateTime(startDateTime) : 'Select Start Date & Time'}
-          editable={false}
-          placeholder="Select Start Date & Time"
-          placeholderTextColor="#aaa"
-        />
-      </TouchableOpacity>
-
-      {/* End Date and Time */}
-      <TouchableOpacity onPress={() => handlePickerPress('endDateTime')}>
-        <TextInput
-          style={[styles.input, { color: endDateTime ? '#333' : '#aaa' }]}
-          value={endDateTime ? formatDateTime(endDateTime) : 'Select End Date & Time'}
-          editable={false}
-          placeholder="Select End Date & Time"
-          placeholderTextColor="#aaa"
-        />
-      </TouchableOpacity>
-
-      {/* DateTime Picker */}
-      {pickerConfig.show && (
-        <DateTimePicker
-          mode="datetime"
-          value={
-            pickerConfig.type === 'startDateTime'
-              ? startDateTime || new Date()
-              : endDateTime || new Date()
-          }
-          display="spinner"
-          onChange={handlePickerChange}
-          textColor="black"
-        />
-      )}
-
-      {/* Location */}
-      <TextInput
-        style={styles.input}
-        placeholder="Location"
-        placeholderTextColor="#aaa"
-        value={location}
-        onChangeText={setLocation}
-      />
+      <Text style={styles.charCount}>{title.length}/80</Text>
 
       {/* Description */}
+      <Text style={styles.label}>Description *</Text>
       <TextInput
-        style={styles.input}
-        placeholder="Description"
-        placeholderTextColor="#aaa"
+        style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
         value={description}
         onChangeText={setDescription}
+        placeholder="Tell people about your event..."
+        multiline
+        maxLength={2000}
+        placeholderTextColor="#aaa"
       />
+      <Text style={styles.charCount}>{description.length}/2000</Text>
 
-      <View>
-        <Text style={styles.title}>Options</Text>
-
-        <RNPickerSelect
-          placeholder={{ label: 'Select Visibility', value: '' }}
-          value={visibility}
-          onValueChange={(value) => setVisibility(value || 'public')}
-          items={[
-            { label: 'Public', value: 'public' },
-            { label: 'Friends Only', value: 'friends' },
-          ]}
-          style={{
-            inputAndroid: styles.input,
-            inputIOS: styles.input,
-            placeholder: { color: '#aaa' },
-          }}
-        />
-
-        {/* Capacity */}
-        <TextInput
-          style={styles.input}
-          placeholder="Capacity (Number of People)"
-          placeholderTextColor="#aaa"
-          value={capacity}
-          keyboardType="numeric"
-          onChangeText={setCapacity}
-        />
-
-        {/* Category */}
-        <RNPickerSelect
-          placeholder={{ label: 'Select Category', value: '' }}
-          value={category}
-          onValueChange={(value) => setCategory(value)}
-          items={[
-            { label: 'Fitness', value: 'Fitness' },
-            { label: 'Outdoors', value: 'Outdoors' },
-            { label: 'Food', value: 'Food' },
-            { label: 'Artsy', value: 'Artsy' },
-            { label: 'Music', value: 'Music' },
-            { label: 'Gaming', value: 'Gaming' },
-            { label: 'Technology', value: 'Technology' },
-          ]}
-          style={{
-            inputAndroid: styles.input,
-            inputIOS: styles.input,
-            placeholder: { color: '#aaa' },
-          }}
-        />
+      {/* Category */}
+      <Text style={styles.label}>Category *</Text>
+      <View style={styles.chipsRow}>
+        {CATEGORIES.map((cat) => (
+          <TouchableOpacity
+            key={cat}
+            style={[styles.catChip, categoryId === cat && styles.catChipActive]}
+            onPress={() => setCategoryId(cat)}
+          >
+            <Text style={[styles.catChipText, categoryId === cat && styles.catChipTextActive]}>
+              {cat}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
-      {/* Create Event Button */}
-      <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-        <Text style={styles.buttonText}>Create Event</Text>
+      {/* Visibility */}
+      <Text style={styles.label}>Visibility</Text>
+      <View style={styles.visRow}>
+        {VISIBILITY_OPTIONS.map((v) => (
+          <TouchableOpacity
+            key={v}
+            style={[styles.visChip, visibility === v && styles.visChipActive]}
+            onPress={() => setVisibility(v)}
+          >
+            <Ionicons
+              name={v === 'public' ? 'globe-outline' : 'lock-closed-outline'}
+              size={16}
+              color={visibility === v ? '#fff' : '#666'}
+            />
+            <Text style={[styles.visText, visibility === v && styles.visTextActive]}>
+              {v === 'public' ? 'Public' : 'Friends Only'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Location */}
+      <Text style={styles.label}>Location</Text>
+      <TextInput
+        style={styles.input}
+        value={locationName}
+        onChangeText={setLocationName}
+        placeholder="Where is this event?"
+        maxLength={120}
+        placeholderTextColor="#aaa"
+      />
+
+      {/* Start / End Time */}
+      <Text style={styles.label}>Start Time</Text>
+      {Platform.OS === 'web' ? (
+        <Text style={styles.input}>Web picker not supported yet.</Text>
+      ) : (
+        <>
+          <TouchableOpacity style={styles.dateButton} onPress={() => setShowStartPicker(!showStartPicker)}>
+            <Ionicons name="time-outline" size={18} color="#666" />
+            <Text style={styles.dateText}>{formatDate(startDate)}</Text>
+          </TouchableOpacity>
+          {showStartPicker && DateTimePicker && (
+            <DateTimePicker
+              value={startDate}
+              mode="datetime"
+              onChange={(e: any, d: any) => {
+                setShowStartPicker(Platform.OS === 'ios');
+                if (d) setStartDate(d);
+              }}
+            />
+          )}
+        </>
+      )}
+
+      <Text style={styles.label}>End Time</Text>
+      {Platform.OS === 'web' ? (
+        <Text style={styles.input}>Web picker not supported yet.</Text>
+      ) : (
+        <>
+          <TouchableOpacity style={styles.dateButton} onPress={() => setShowEndPicker(!showEndPicker)}>
+            <Ionicons name="time-outline" size={18} color="#666" />
+            <Text style={styles.dateText}>{formatDate(endDate)}</Text>
+          </TouchableOpacity>
+          {showEndPicker && DateTimePicker && (
+            <DateTimePicker
+              value={endDate}
+              mode="datetime"
+              onChange={(e: any, d: any) => {
+                setShowEndPicker(Platform.OS === 'ios');
+                if (d) setEndDate(d);
+              }}
+            />
+          )}
+        </>
+      )}
+
+      {/* Capacity */}
+      <Text style={styles.label}>Capacity (optional)</Text>
+      <TextInput
+        style={styles.input}
+        value={capacity}
+        onChangeText={setCapacity}
+        placeholder="Max attendees"
+        keyboardType="numeric"
+        placeholderTextColor="#aaa"
+      />
+
+      {/* Submit */}
+      <TouchableOpacity
+        style={[styles.submitBtn, submitting && { opacity: 0.6 }]}
+        onPress={handleSubmit}
+        disabled={submitting}
+      >
+        {submitting ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.submitText}>Post Event</Text>
+        )}
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  mainContainer: {
-    flex: 1,
-    backgroundColor: 'white',
-    paddingHorizontal: 30,
-  },
-  title: {
-    fontSize: 20,
-    marginBottom: 20,
-  },
+  container: { flex: 1, backgroundColor: '#fff' },
+  scrollContent: { padding: 16, paddingTop: 60, paddingBottom: 40 },
+  pageTitle: { fontSize: 24, fontWeight: '700', marginBottom: 20 },
+  label: { fontSize: 15, fontWeight: '600', color: '#333', marginTop: 12, marginBottom: 6 },
   input: {
-    height: 40,
-    borderColor: 'gray',
-    borderWidth: 1,
-    marginBottom: 20,
-    paddingLeft: 8,
-    justifyContent: 'center',
-    backgroundColor: '#f9f9f9',
-    color: '#333',
+    backgroundColor: '#f5f5f5', borderRadius: 10, padding: 12,
+    fontSize: 15, color: '#333',
   },
-  button: {
-    backgroundColor: '#866FD8',
-    paddingVertical: 12,
-    borderRadius: 25,
-    alignItems: 'center',
-    marginTop: 20,
+  charCount: { fontSize: 11, color: '#999', textAlign: 'right', marginTop: 2 },
+  chipsRow: { flexDirection: 'row', flexWrap: 'wrap' },
+  catChip: {
+    backgroundColor: '#f0f0f0', borderRadius: 16, paddingHorizontal: 12,
+    paddingVertical: 6, marginRight: 8, marginBottom: 8,
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+  catChipActive: { backgroundColor: '#866FD8' },
+  catChipText: { fontSize: 13, color: '#666' },
+  catChipTextActive: { color: '#fff', fontWeight: '600' },
+  visRow: { flexDirection: 'row', gap: 10 },
+  visChip: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 10, borderRadius: 8, borderWidth: 1.5, borderColor: '#ddd',
   },
+  visChipActive: { backgroundColor: '#866FD8', borderColor: '#866FD8' },
+  visText: { marginLeft: 6, fontSize: 14, color: '#666' },
+  visTextActive: { color: '#fff', fontWeight: '600' },
+  dateButton: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#f5f5f5',
+    borderRadius: 10, padding: 12,
+  },
+  dateText: { fontSize: 15, color: '#333', marginLeft: 8 },
+  submitBtn: {
+    backgroundColor: '#866FD8', borderRadius: 12, paddingVertical: 14,
+    alignItems: 'center', marginTop: 24,
+  },
+  submitText: { color: '#fff', fontSize: 17, fontWeight: '700' },
 });

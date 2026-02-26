@@ -1,371 +1,251 @@
-import React from 'react';
-import { StyleSheet, Image, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+// app/(tabs)/profile.tsx — Own profile with hosted/attending events
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useProfile } from '../ProfileContext';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useRouter } from 'expo-router';
 import { useAuth } from '@/src/auth/AuthContext';
+import { useProfile } from '../ProfileContext';
+import { ConnectEvent } from '@/components/models/ConnectEvent';
+import {
+  listFriends, FriendEdge, fetchEventsByCreator,
+  fetchUserAttendingEventIds, fetchEventsByIds,
+} from '@/src/services/social';
+import { captureException } from '@/src/telemetry';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { name, interests } = useProfile();
   const { user, logOut } = useAuth();
+  const { name, interests, bio, profileLoading } = useProfile();
 
-  // Example data for friends
-  const friendsList = [
-    { id: 1, name: 'Alice', avatar: 'https://i.imgur.com/xT3UJDj.png' },
-    { id: 2, name: 'Bob', avatar: 'https://i.imgur.com/YUOiaWs.png' },
-    { id: 3, name: 'Charlie', avatar: 'https://i.imgur.com/eSLPLrZ.png' },
-    { id: 4, name: 'Diana', avatar: 'https://i.imgur.com/xT3UJDj.png' },
-    { id: 5, name: 'Eve', avatar: 'https://i.imgur.com/Gef8swX.png' },
-    { id: 6, name: 'Frank', avatar: 'https://i.imgur.com/YUOiaWs.png' },
-    { id: 7, name: 'Grace', avatar: 'https://i.imgur.com/gUb6CDD.png' },
-  ];
+  const [friends, setFriends] = useState<FriendEdge[]>([]);
+  const [hostedEvents, setHostedEvents] = useState<ConnectEvent[]>([]);
+  const [attendingEvents, setAttendingEvents] = useState<ConnectEvent[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Example data for user events
-  const userEvents = [
-    {
-      id: 1,
-      title: 'Saturday BBQ',
-      description: 'Meet at the local park with friends and family!',
-      date: 'Jan 20, 1 PM',
-      type: 'hosting',
-    },
-    {
-      id: 2,
-      title: 'Charity Fun Run',
-      description: 'Join the 5K run for a good cause.',
-      date: 'Jan 25, 9 AM',
-      type: 'attending',
-    },
-    {
-      id: 3,
-      title: 'Music Jam Session',
-      description: 'Bring your instruments! All are welcome.',
-      date: 'Feb 2, 7 PM',
-      type: 'hosting',
-    },
-  ];
+  useEffect(() => {
+    const load = async () => {
+      if (!user) { setLoading(false); return; }
+      try {
+        const [friendsList, hosted, attendingIds] = await Promise.all([
+          listFriends(user.uid),
+          fetchEventsByCreator(user.uid),
+          fetchUserAttendingEventIds(user.uid),
+        ]);
+        setFriends(friendsList);
+        setHostedEvents(hosted);
 
-  const handleEditProfile = () => {
-    router.push('../edit-profile');
-  };
+        if (attendingIds.length > 0) {
+          const events = await fetchEventsByIds(attendingIds);
+          setAttendingEvents(events);
+        }
+      } catch (err) {
+        captureException(err, { flow: 'loadProfile' });
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [user]);
 
   const handleLogout = async () => {
     try {
       await logOut();
       router.replace('/landing');
-    } catch {
-      Alert.alert('Error', 'Failed to log out.');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to sign out.');
     }
   };
 
-  const handleFriendsComingSoon = () => {
-    Alert.alert('Coming Soon', 'The friends feature is under development!');
-  };
+  if (profileLoading || loading) {
+    return (
+      <ThemedView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#866FD8" />
+      </ThemedView>
+    );
+  }
 
   return (
     <ThemedView style={styles.container}>
-      {/* Header Section */}
-      <View style={styles.header}>
-        <Image
-          source={{ uri: 'https://i.imgur.com/4OLE27o.png' }}
-          style={styles.profileImage}
-        />
-        <View style={styles.nameWrapper}>
-          <ThemedText style={styles.name} type="title">
-            {name}
-          </ThemedText>
-          <TouchableOpacity onPress={handleEditProfile}>
-            <ThemedText style={styles.pencilIcon}>🖊️</ThemedText>
-          </TouchableOpacity>
-        </View>
-
-        <ThemedText style={styles.email} type="subtitle">
-          {user?.email ?? 'johndoe@student.ubc.ca'}
-        </ThemedText>
-        {user && !user.emailVerified && (
-          <ThemedText style={styles.verifyWarning}>
-            ⚠️ Email not verified — check your inbox
-          </ThemedText>
-        )}
-      </View>
-
-      {/* Content Section */}
-      <ScrollView style={styles.contentSection}>
-        {/* Friends Section */}
-        <View style={[styles.section, styles.friendsSection]}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <ThemedText style={styles.sectionTitle} type="title">
-              Friends
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Avatar */}
+        <View style={styles.avatarSection}>
+          <View style={styles.avatar}>
+            <ThemedText style={styles.avatarText}>
+              {name ? name.charAt(0).toUpperCase() : '?'}
             </ThemedText>
           </View>
-          <View style={styles.friendsRow}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.friendsContainer}
-            >
-              {friendsList.map((friend) => (
-                <TouchableOpacity
-                  key={friend.id}
-                  style={styles.friendItem}
-                  onPress={handleFriendsComingSoon}
-                >
-                  <Image
-                    source={{ uri: friend.avatar }}
-                    style={styles.friendAvatar}
-                  />
-                </TouchableOpacity>
-              ))}
-              {/* "..." bubble at the end */}
-              <TouchableOpacity
-                style={styles.moreBubble}
-                onPress={handleFriendsComingSoon}
-              >
-                <ThemedText style={styles.moreText}>...</ThemedText>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
+          <ThemedText style={styles.displayName}>{name || 'UBC User'}</ThemedText>
+          {bio ? <ThemedText style={styles.bio}>{bio}</ThemedText> : null}
 
-        {/* Interests Section */}
-        <View style={[styles.section, styles.interestsSection]}>
-          <ThemedText style={styles.sectionTitle} type="title">
-            Interests
-          </ThemedText>
-          <View style={styles.interestsContainer}>
-            {interests.map((interest, index) => (
-              <View key={index} style={styles.interestBubble}>
-                <ThemedText style={styles.interestText}>{interest}</ThemedText>
-              </View>
-            ))}
-            <TouchableOpacity style={styles.interestPlus} onPress={handleEditProfile}>
-              <ThemedText style={styles.plusText}>+</ThemedText>
+          {/* Actions */}
+          <View style={styles.actionsRow}>
+            <TouchableOpacity style={styles.editBtn} onPress={() => router.push('/edit-profile')}>
+              <Ionicons name="create-outline" size={18} color="#fff" />
+              <ThemedText style={styles.editBtnText}>Edit Profile</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+              <Ionicons name="log-out-outline" size={18} color="#e65100" />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Feed Section */}
-        <View style={[styles.section, styles.feedSection]}>
-          <ThemedText style={styles.sectionTitle} type="title">
-            Feed
-          </ThemedText>
+        {/* Stats */}
+        <View style={styles.statsRow}>
+          <TouchableOpacity style={styles.statBox} onPress={() => router.push('/(tabs)/friends')}>
+            <ThemedText style={styles.statNumber}>{friends.length}</ThemedText>
+            <ThemedText style={styles.statLabel}>Friends</ThemedText>
+          </TouchableOpacity>
+          <View style={styles.statBox}>
+            <ThemedText style={styles.statNumber}>{hostedEvents.length}</ThemedText>
+            <ThemedText style={styles.statLabel}>Hosting</ThemedText>
+          </View>
+          <View style={styles.statBox}>
+            <ThemedText style={styles.statNumber}>{attendingEvents.length}</ThemedText>
+            <ThemedText style={styles.statLabel}>Attending</ThemedText>
+          </View>
+        </View>
 
-          {userEvents.length === 0 ? (
-            <ThemedText style={styles.sectionContent}>Feed is empty :(</ThemedText>
-          ) : (
-            userEvents.map((event) => (
-              <View key={event.id} style={styles.eventContainer}>
-                <ThemedText style={styles.eventTitle} type="subtitle">
-                  {event.title}
-                </ThemedText>
-                <ThemedText style={styles.eventDescription}>
-                  {event.description}
-                </ThemedText>
-                <ThemedText style={styles.eventDate}>{event.date}</ThemedText>
-
-                <View
-                  style={[
-                    styles.tag,
-                    event.type === 'hosting' ? styles.tagHosting : styles.tagAttending,
-                  ]}
-                >
-                  <ThemedText style={styles.tagText}>
-                    {event.type.toUpperCase()}
-                  </ThemedText>
+        {/* Interests */}
+        {interests && interests.length > 0 && (
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Interests</ThemedText>
+            <View style={styles.chipsRow}>
+              {interests.map((interest, i) => (
+                <View key={i} style={styles.chip}>
+                  <ThemedText style={styles.chipText}>{interest}</ThemedText>
                 </View>
-              </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Hosted Events */}
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Your Events</ThemedText>
+          {hostedEvents.length === 0 ? (
+            <ThemedText style={styles.emptyText}>No events created yet</ThemedText>
+          ) : (
+            hostedEvents.map((e) => (
+              <TouchableOpacity
+                key={e.id}
+                style={styles.eventCard}
+                onPress={() => router.push(`/event/${e.id}`)}
+              >
+                <ThemedText style={styles.eventTitle}>{e.title}</ThemedText>
+                <ThemedText style={styles.eventSub}>
+                  {e.locationName || 'No location'} · {e.categoryId || ''}
+                </ThemedText>
+              </TouchableOpacity>
             ))
           )}
         </View>
-      </ScrollView>
 
-      {/* Log out button */}
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <ThemedText style={styles.buttonText}>Log Out</ThemedText>
-      </TouchableOpacity>
+        {/* Attending */}
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Attending</ThemedText>
+          {attendingEvents.length === 0 ? (
+            <ThemedText style={styles.emptyText}>Not attending any events</ThemedText>
+          ) : (
+            attendingEvents.map((e) => (
+              <TouchableOpacity
+                key={e.id}
+                style={styles.eventCard}
+                onPress={() => router.push(`/event/${e.id}`)}
+              >
+                <ThemedText style={styles.eventTitle}>{e.title}</ThemedText>
+                <ThemedText style={styles.eventSub}>{e.locationName || 'No location'}</ThemedText>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+
+        {/* Friends Preview */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <ThemedText style={styles.sectionTitle}>Friends</ThemedText>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/friends')}>
+              <ThemedText style={{ color: '#866FD8', fontSize: 14 }}>See All</ThemedText>
+            </TouchableOpacity>
+          </View>
+          {friends.length === 0 ? (
+            <ThemedText style={styles.emptyText}>No friends yet</ThemedText>
+          ) : (
+            <View style={styles.friendsList}>
+              {friends.slice(0, 5).map((f) => (
+                <TouchableOpacity
+                  key={f.friendUid}
+                  style={styles.friendItem}
+                  onPress={() => router.push(`/profile/${f.friendUid}`)}
+                >
+                  <View style={styles.friendAvatar}>
+                    <ThemedText style={styles.friendAvatarText}>
+                      {f.friendUid.charAt(0).toUpperCase()}
+                    </ThemedText>
+                  </View>
+                </TouchableOpacity>
+              ))}
+              {friends.length > 5 && (
+                <TouchableOpacity
+                  style={[styles.friendAvatar, { backgroundColor: '#eee' }]}
+                  onPress={() => router.push('/(tabs)/friends')}
+                >
+                  <ThemedText style={{ color: '#666', fontSize: 12 }}>
+                    +{friends.length - 5}
+                  </ThemedText>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+        </View>
+      </ScrollView>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    paddingTop: 70,
-    backgroundColor: '#DAE2FF',
+  container: { flex: 1, backgroundColor: '#fff' },
+  scrollContent: { paddingTop: 60, paddingBottom: 40, paddingHorizontal: 16 },
+  avatarSection: { alignItems: 'center', marginBottom: 20 },
+  avatar: {
+    width: 90, height: 90, borderRadius: 45, backgroundColor: '#866FD8',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 10,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 20,
+  avatarText: { color: '#fff', fontSize: 36, fontWeight: 'bold' },
+  displayName: { fontSize: 22, fontWeight: '700', color: '#333' },
+  bio: { fontSize: 14, color: '#666', marginTop: 4, textAlign: 'center', paddingHorizontal: 20 },
+  actionsRow: { flexDirection: 'row', marginTop: 12, gap: 10 },
+  editBtn: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#866FD8',
+    paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20,
   },
-  profileImage: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    marginBottom: 10,
+  editBtnText: { color: '#fff', fontWeight: '600', marginLeft: 6 },
+  logoutBtn: { padding: 8, borderRadius: 20, borderWidth: 1, borderColor: '#e65100' },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 20 },
+  statBox: { alignItems: 'center' },
+  statNumber: { fontSize: 20, fontWeight: '700', color: '#866FD8' },
+  statLabel: { fontSize: 12, color: '#999', marginTop: 2 },
+  section: { marginBottom: 20 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#333', marginBottom: 10 },
+  chipsRow: { flexDirection: 'row', flexWrap: 'wrap' },
+  chip: {
+    backgroundColor: '#e8e0ff', borderRadius: 16, paddingHorizontal: 12,
+    paddingVertical: 6, marginRight: 8, marginBottom: 8,
   },
-  nameWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 5,
+  chipText: { fontSize: 13, color: '#333' },
+  eventCard: {
+    backgroundColor: '#f5f5f5', borderRadius: 10, padding: 14, marginBottom: 8,
   },
-  pencilIcon: {
-    fontSize: 20,
-    marginRight: 8,
-  },
-  name: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  email: {
-    fontSize: 16,
-    color: '#333',
-  },
-  verifyWarning: {
-    fontSize: 13,
-    color: '#e65100',
-    marginTop: 4,
-  },
-  contentSection: {
-    flex: 1,
-  },
-  section: {
-    marginBottom: 20,
-  },
-  friendsSection: {
-    backgroundColor: '#E8F4FF',
-    borderRadius: 8,
-    padding: 12,
-  },
-  interestsSection: {
-    backgroundColor: '#FFF4E8',
-    borderRadius: 8,
-    padding: 12,
-  },
-  feedSection: {
-    backgroundColor: '#F2E8FF',
-    borderRadius: 8,
-    padding: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#333',
-  },
-  sectionContent: {
-    fontSize: 16,
-  },
-  friendsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  friendsContainer: {
-    paddingRight: 10,
-    alignItems: 'center',
-  },
-  friendItem: {
-    marginRight: 10,
-  },
+  eventTitle: { fontSize: 16, fontWeight: '600', color: '#333' },
+  eventSub: { fontSize: 13, color: '#777', marginTop: 4 },
+  emptyText: { fontSize: 14, color: '#999', fontStyle: 'italic' },
+  friendsList: { flexDirection: 'row', flexWrap: 'wrap' },
+  friendItem: { marginRight: 8 },
   friendAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 44, height: 44, borderRadius: 22, backgroundColor: '#866FD8',
+    alignItems: 'center', justifyContent: 'center',
   },
-  moreBubble: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#CCC',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  moreText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  interestsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-  },
-  interestBubble: {
-    backgroundColor: '#E0E0E0',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  interestText: {
-    fontSize: 14,
-    color: '#333',
-  },
-  interestPlus: {
-    backgroundColor: '#EEE',
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  plusText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  eventContainer: {
-    marginBottom: 16,
-  },
-  eventTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  eventDescription: {
-    fontSize: 14,
-    marginTop: 5,
-    color: '#333',
-  },
-  eventDate: {
-    fontSize: 12,
-    color: '#777',
-    marginTop: 5,
-  },
-  tag: {
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-    marginTop: 10,
-  },
-  tagHosting: {
-    backgroundColor: '#FF8C00',
-  },
-  tagAttending: {
-    backgroundColor: '#4CAF50',
-  },
-  tagText: {
-    color: '#fff',
-    fontSize: 12,
-  },
-  logoutButton: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    backgroundColor: '#FF3B30',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginTop: 30,
-  },
-  buttonText: {
-    fontSize: 14,
-    color: '#fff',
-    fontWeight: 'bold',
-  },
+  friendAvatarText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
 });

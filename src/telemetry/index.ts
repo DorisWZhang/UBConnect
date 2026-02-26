@@ -51,3 +51,46 @@ export async function logEvent(
         s.addBreadcrumb({ category: 'app', message: name, data: props });
     }
 }
+
+// ---------------------------------------------------------------------------
+// Firestore-specific helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse a Firebase/Firestore error and return a structured code string.
+ * Useful for detecting 'permission-denied' and 'unauthenticated'.
+ */
+export function parseFirebaseErrorCode(error: unknown): string {
+    if (error && typeof error === 'object') {
+        const e = error as any;
+        // Firebase JS SDK errors have a `code` property like 'permission-denied'
+        if (typeof e.code === 'string') return e.code;
+        // Some Firebase errors wrap the code in message
+        if (typeof e.message === 'string') {
+            if (e.message.includes('permission-denied')) return 'permission-denied';
+            if (e.message.includes('unauthenticated')) return 'unauthenticated';
+            if (e.message.includes('not-found')) return 'not-found';
+        }
+    }
+    return 'unknown';
+}
+
+/**
+ * Log a Firestore error with screen/operation context and detect permission errors.
+ */
+export async function logFirestoreError(
+    error: unknown,
+    context: { screen: string; operation: string; uid?: string; verified?: boolean },
+): Promise<void> {
+    const code = parseFirebaseErrorCode(error);
+    await logEvent('firestore_error', { ...context, code });
+    await captureException(error, { ...context, firestoreErrorCode: code });
+}
+
+/**
+ * Check if a Firebase error is a permission-denied error.
+ */
+export function isPermissionDenied(error: unknown): boolean {
+    const code = parseFirebaseErrorCode(error);
+    return code === 'permission-denied' || code === 'unauthenticated';
+}

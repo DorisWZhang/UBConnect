@@ -62,6 +62,7 @@ export default function LoginScreen() {
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
+                textContentType="oneTimeCode"
             />
 
             <TouchableOpacity

@@ -195,3 +195,79 @@ describe('fromFirestoreDoc', () => {
         expect(event!.startAt).toBeInstanceOf(Date);
     });
 });
+
+// ---------------------------------------------------------------------------
+// Max-length validation
+// ---------------------------------------------------------------------------
+describe('validateEvent max-length', () => {
+    it('fails when title exceeds 200 characters', () => {
+        const result = validateEvent({
+            title: 'A'.repeat(201),
+            description: 'Valid description',
+        });
+        expect(result.valid).toBe(false);
+        expect(result.errors).toContain('title must be 200 characters or less');
+    });
+
+    it('passes with exactly 200-char title', () => {
+        const result = validateEvent({
+            title: 'A'.repeat(200),
+            description: 'Valid description',
+        });
+        expect(result.valid).toBe(true);
+    });
+
+    it('fails when description exceeds 2000 characters', () => {
+        const result = validateEvent({
+            title: 'Valid title',
+            description: 'D'.repeat(2001),
+        });
+        expect(result.valid).toBe(false);
+        expect(result.errors).toContain('description must be 2000 characters or less');
+    });
+
+    it('passes with exactly 2000-char description', () => {
+        const result = validateEvent({
+            title: 'Valid title',
+            description: 'D'.repeat(2000),
+        });
+        expect(result.valid).toBe(true);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// latitude / longitude fields
+// ---------------------------------------------------------------------------
+describe('fromFirestoreDoc latitude/longitude', () => {
+    it('maps latitude and longitude when present', () => {
+        const event = fromFirestoreDoc('doc7', {
+            title: 'Geo Event',
+            description: 'With coords',
+            latitude: 49.2606,
+            longitude: -123.246,
+        });
+        expect(event!.latitude).toBe(49.2606);
+        expect(event!.longitude).toBe(-123.246);
+    });
+
+    it('defaults latitude and longitude to null when missing', () => {
+        const event = fromFirestoreDoc('doc8', {
+            title: 'No Coords',
+            description: 'Without coords',
+        });
+        expect(event!.latitude).toBeNull();
+        expect(event!.longitude).toBeNull();
+    });
+
+    it('defaults non-numeric latitude/longitude to null', () => {
+        const event = fromFirestoreDoc('doc9', {
+            title: 'Test',
+            description: 'Test',
+            latitude: 'not-a-number',
+            longitude: null,
+        });
+        expect(event!.latitude).toBeNull();
+        expect(event!.longitude).toBeNull();
+    });
+});
+

@@ -1,62 +1,31 @@
-// edit-profile.tsx
+// edit-profile.tsx — saves to Firestore via ProfileContext
 import React, { useState } from 'react';
-import { StyleSheet, View, TextInput, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
-// Import your context or fix this path as needed
 import { useProfile } from './ProfileContext';
 import { ScrollView } from 'react-native';
+import { logEvent } from '@/src/telemetry';
 
 export default function EditProfilePage() {
   const router = useRouter();
-  const { name, setName, interests, setInterests } = useProfile();
+  const { name, interests, bio, saveProfile } = useProfile();
+
   const ALL_INTERESTS = [
-    'Anime',
-    'Board Games',
-    'Bowling',
-    'Billiards',
-    'Cars',
-    'Chess',
-    'Cooking',
-    'Cycling',
-    'Dancing',
-    'Drawing',
-    'Driving',
-    'Esports',
-    'Gaming',
-    'Go Karting',
-    'Golf',
-    'Gym',
-    'Hiking',
-    'Horseback Riding',
-    'Ice Skating',
-    'Karaoke',
-    'Martial Arts',
-    'Movies',
-    'Music',
-    'Painting',
-    'Photography',
-    'Programming',
-    'Reading',
-    'Rock Climbing',
-    'Rollerblading',
-    'Running',
-    'Shopping',
-    'Shooting Sports',
-    'Skiing',
-    'Skateboarding',
-    'Snowboarding',
-    'Sports',
-    'Surfing',
-    'Swimming',
-    'Squash',
-    'Traveling',
-    'Yoga'
+    'Anime', 'Board Games', 'Bowling', 'Billiards', 'Cars', 'Chess',
+    'Cooking', 'Cycling', 'Dancing', 'Drawing', 'Driving', 'Esports',
+    'Gaming', 'Go Karting', 'Golf', 'Gym', 'Hiking', 'Horseback Riding',
+    'Ice Skating', 'Karaoke', 'Martial Arts', 'Movies', 'Music', 'Painting',
+    'Photography', 'Programming', 'Reading', 'Rock Climbing', 'Rollerblading',
+    'Running', 'Shopping', 'Shooting Sports', 'Skiing', 'Skateboarding',
+    'Snowboarding', 'Sports', 'Surfing', 'Swimming', 'Squash', 'Traveling', 'Yoga',
   ];
 
   const [tempName, setTempName] = useState(name);
+  const [tempBio, setTempBio] = useState(bio || '');
   const [selectedInterests, setSelectedInterests] = useState<string[]>(interests);
+  const [saving, setSaving] = useState(false);
 
   const toggleInterest = (interest: string) => {
     setSelectedInterests((prev) =>
@@ -66,10 +35,26 @@ export default function EditProfilePage() {
     );
   };
 
-  const handleSave = () => {
-    setName(tempName);
-    setInterests(selectedInterests);
-    router.back();
+  const handleSave = async () => {
+    if (!tempName.trim()) {
+      Alert.alert('Error', 'Name cannot be empty.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await saveProfile({
+        displayName: tempName.trim(),
+        displayNameLower: tempName.trim().toLowerCase(),
+        bio: tempBio.trim(),
+        interests: selectedInterests,
+      });
+      await logEvent('profile_edit_saved');
+      router.back();
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to save profile. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancel = () => {
@@ -91,7 +76,22 @@ export default function EditProfilePage() {
             value={tempName}
             onChangeText={setTempName}
             placeholder="Your Name"
+            maxLength={50}
           />
+        </View>
+
+        {/* Bio Input */}
+        <View style={styles.fieldContainer}>
+          <ThemedText style={styles.label}>Bio</ThemedText>
+          <TextInput
+            style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+            value={tempBio}
+            onChangeText={setTempBio}
+            placeholder="Tell us about yourself"
+            multiline
+            maxLength={280}
+          />
+          <ThemedText style={styles.charCount}>{tempBio.length}/280</ThemedText>
         </View>
 
         {/* Multiple-choice Interests */}
@@ -125,8 +125,14 @@ export default function EditProfilePage() {
 
         {/* Button Section */}
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={handleSave}>
-            <ThemedText style={styles.buttonText}>Save</ThemedText>
+          <TouchableOpacity
+            style={[styles.button, styles.saveButton, saving && { opacity: 0.6 }]}
+            onPress={handleSave}
+            disabled={saving}
+          >
+            <ThemedText style={styles.buttonText}>
+              {saving ? 'Saving...' : 'Save'}
+            </ThemedText>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={handleCancel}>
             <ThemedText style={styles.buttonText}>Cancel</ThemedText>
@@ -149,6 +155,12 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     fontSize: 16,
   },
+  charCount: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'right',
+    marginTop: 4,
+  },
   interestsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -162,7 +174,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   interestChipSelected: {
-    backgroundColor: '#007BFF',
+    backgroundColor: '#866FD8',
   },
   interestChipText: {
     color: '#333',
@@ -183,7 +195,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 4,
   },
-  saveButton: { backgroundColor: '#007BFF' },
+  saveButton: { backgroundColor: '#866FD8' },
   cancelButton: { backgroundColor: '#777' },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
 });

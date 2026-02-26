@@ -75,6 +75,7 @@ export default function SignupScreen() {
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
+                textContentType="oneTimeCode"
             />
             <TextInput
                 style={styles.input}
@@ -83,6 +84,7 @@ export default function SignupScreen() {
                 value={confirm}
                 onChangeText={setConfirm}
                 secureTextEntry
+                textContentType="oneTimeCode"
             />
 
             <TouchableOpacity

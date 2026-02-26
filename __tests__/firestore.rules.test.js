@@ -1,39 +1,65 @@
-/**
- * @jest-environment node
- */
-
-/**
- * Firestore Security Rules tests — requires Firebase emulator running.
- *
- * Run: npm run test:rules
- * Or:  firebase emulators:exec --only firestore "jest __tests__/firestore.rules.test.js"
- */
-
-// Force the Firestore SDK to use the emulator
-process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
-
+// Firestore security rules tests
+// Requires Firebase emulator: npx firebase emulators:start --only firestore
 const {
     initializeTestEnvironment,
     assertFails,
     assertSucceeds,
 } = require('@firebase/rules-unit-testing');
-const { readFileSync } = require('fs');
-const { setDoc, doc, getDoc, deleteDoc } = require('firebase/firestore');
+
+const fs = require('fs');
+const path = require('path');
 
 const PROJECT_ID = 'ubconnect-test';
 
 let testEnv;
 
+// Helper to create an auth context for a verified UBC user
+function verifiedUbcAuth(uid, email) {
+    return {
+        sub: uid,
+        email: email || `${uid}@student.ubc.ca`,
+        email_verified: true,
+        token: {
+            email: email || `${uid}@student.ubc.ca`,
+            email_verified: true,
+        },
+    };
+}
+
+// Helper: unverified UBC user
+function unverifiedUbcAuth(uid) {
+    return {
+        sub: uid,
+        email: `${uid}@student.ubc.ca`,
+        email_verified: false,
+        token: {
+            email: `${uid}@student.ubc.ca`,
+            email_verified: false,
+        },
+    };
+}
+
+// Helper: verified non-UBC user
+function verifiedNonUbcAuth(uid) {
+    return {
+        sub: uid,
+        email: `${uid}@gmail.com`,
+        email_verified: true,
+        token: {
+            email: `${uid}@gmail.com`,
+            email_verified: true,
+        },
+    };
+}
+
 beforeAll(async () => {
+    const rulesPath = path.join(__dirname, '..', 'firestore.rules');
+    const rules = fs.readFileSync(rulesPath, 'utf8');
     testEnv = await initializeTestEnvironment({
         projectId: PROJECT_ID,
-        firestore: {
-            rules: readFileSync('firestore.rules', 'utf8'),
-            host: '127.0.0.1',
-            port: 8080,
-        },
+        firestore: { rules, host: '127.0.0.1', port: 8080 },
     });
-}, 30000);
+});
 
 afterAll(async () => {
     if (testEnv) await testEnv.cleanup();
@@ -43,127 +69,554 @@ afterEach(async () => {
     if (testEnv) await testEnv.clearFirestore();
 });
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-function verifiedUser(uid = 'user1', email = 'alice@student.ubc.ca') {
-    return testEnv.authenticatedContext(uid, {
-        email,
-        email_verified: true,
-    });
-}
-
-function unverifiedUser(uid = 'unverified1', email = 'bob@student.ubc.ca') {
-    return testEnv.authenticatedContext(uid, {
-        email,
-        email_verified: false,
-    });
-}
-
-function unauthenticatedUser() {
-    return testEnv.unauthenticatedContext();
-}
-
-function validEvent(uid = 'user1') {
-    return {
-        title: 'Study Group',
-        description: 'Library room 200',
-        location: 'UBC Library',
-        category: 'Academics',
-        visibility: 'public',
-        createdBy: uid,
-        createdAt: new Date(),
-    };
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-describe('connectEvents rules', () => {
-    test('unauthenticated user cannot read', async () => {
-        const ctx = unauthenticatedUser();
-        const ref = doc(ctx.firestore(), 'connectEvents', 'event1');
-        await assertFails(getDoc(ref));
+// ================================================================
+// Gating: Email verification + UBC domain
+// ================================================================
+describe('Global gating', () => {
+    test('unverified user cannot read users collection', async () => {
+        const db = testEnv.authenticatedContext('alice', unverifiedUbcAuth('alice')).firestore();
+        await assertFails(db.collection('users').doc('alice').get());
     });
 
-    test('unauthenticated user cannot write', async () => {
-        const ctx = unauthenticatedUser();
-        const ref = doc(ctx.firestore(), 'connectEvents', 'event1');
-        await assertFails(setDoc(ref, validEvent()));
+    test('non-UBC email user cannot read users collection', async () => {
+        const db = testEnv.authenticatedContext('alice', verifiedNonUbcAuth('alice')).firestore();
+        await assertFails(db.collection('users').doc('alice').get());
     });
 
-    test('unverified user cannot write', async () => {
-        const ctx = unverifiedUser();
-        const ref = doc(ctx.firestore(), 'connectEvents', 'event1');
-        await assertFails(setDoc(ref, validEvent('unverified1')));
+    test('unauthenticated user cannot read anything', async () => {
+        const db = testEnv.unauthenticatedContext().firestore();
+        await assertFails(db.collection('users').doc('anybody').get());
     });
 
-    test('unverified user cannot read', async () => {
-        const ctx = unverifiedUser();
-        const ref = doc(ctx.firestore(), 'connectEvents', 'event1');
-        await assertFails(getDoc(ref));
-    });
+    test('verified UBC user can read users collection', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('users').doc('alice').set({ displayName: 'Alice' });
 
-    test('verified user can create event with correct createdBy', async () => {
-        const ctx = verifiedUser('user1');
-        const ref = doc(ctx.firestore(), 'connectEvents', 'event1');
-        await assertSucceeds(setDoc(ref, validEvent('user1')));
-    });
-
-    test('verified user cannot create event with spoofed createdBy', async () => {
-        const ctx = verifiedUser('user1');
-        const ref = doc(ctx.firestore(), 'connectEvents', 'event1');
-        await assertFails(setDoc(ref, validEvent('someone-else')));
-    });
-
-    test('verified user cannot create event without title', async () => {
-        const ctx = verifiedUser('user1');
-        const ref = doc(ctx.firestore(), 'connectEvents', 'event1');
-        const badEvent = { ...validEvent('user1'), title: '' };
-        await assertFails(setDoc(ref, badEvent));
-    });
-
-    test('verified user cannot create event without description', async () => {
-        const ctx = verifiedUser('user1');
-        const ref = doc(ctx.firestore(), 'connectEvents', 'event1');
-        const { description, ...noDesc } = validEvent('user1');
-        await assertFails(setDoc(ref, noDesc));
-    });
-
-    test('verified user can read events', async () => {
-        // Seed data using admin context
-        await testEnv.withSecurityRulesDisabled(async (adminCtx) => {
-            const ref = doc(adminCtx.firestore(), 'connectEvents', 'event1');
-            await setDoc(ref, validEvent('user1'));
         });
-
-        const ctx = verifiedUser('user2');
-        const ref = doc(ctx.firestore(), 'connectEvents', 'event1');
-        await assertSucceeds(getDoc(ref));
+        const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertSucceeds(db.collection('users').doc('alice').get());
     });
 
-    test('verified user can only update own event', async () => {
-        // Seed event owned by user1
-        await testEnv.withSecurityRulesDisabled(async (adminCtx) => {
-            const ref = doc(adminCtx.firestore(), 'connectEvents', 'event1');
-            await setDoc(ref, validEvent('user1'));
-        });
+    test('unverified user cannot read events', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('connectEvents').doc('e1').set({
+                title: 'Test', description: 'Test', visibility: 'public', createdBy: 'alice',
+            });
 
-        // user2 tries to update user1's event → should fail
-        const ctx2 = verifiedUser('user2');
-        const ref2 = doc(ctx2.firestore(), 'connectEvents', 'event1');
-        await assertFails(setDoc(ref2, { ...validEvent('user2') }));
+        });
+        const db = testEnv.authenticatedContext('bob', unverifiedUbcAuth('bob')).firestore();
+        await assertFails(db.collection('connectEvents').doc('e1').get());
     });
 
-    test('verified user can delete own event', async () => {
-        // Seed
-        await testEnv.withSecurityRulesDisabled(async (adminCtx) => {
-            const ref = doc(adminCtx.firestore(), 'connectEvents', 'event1');
-            await setDoc(ref, validEvent('user1'));
-        });
+    test('non-UBC user cannot read events', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('connectEvents').doc('e1').set({
+                title: 'Test', description: 'Test', visibility: 'public', createdBy: 'alice',
+            });
 
-        const ctx = verifiedUser('user1');
-        const ref = doc(ctx.firestore(), 'connectEvents', 'event1');
-        await assertSucceeds(deleteDoc(ref));
+        });
+        const db = testEnv.authenticatedContext('bob', verifiedNonUbcAuth('bob')).firestore();
+        await assertFails(db.collection('connectEvents').doc('e1').get());
+    });
+});
+
+// ================================================================
+// User profiles
+// ================================================================
+describe('User profiles', () => {
+    test('verified UBC user can create own profile', async () => {
+        const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertSucceeds(db.collection('users').doc('alice').set({
+            displayName: 'Alice',
+            displayNameLower: 'alice',
+            bio: '',
+            interests: [],
+            createdAt: new Date(),
+            lastActiveAt: new Date(),
+        }));
+    });
+
+    test('user cannot create profile for another user', async () => {
+        const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertFails(db.collection('users').doc('bob').set({
+            displayName: 'Bob',
+            createdAt: new Date(),
+        }));
+    });
+
+    test('user can read other profiles', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('users').doc('bob').set({ displayName: 'Bob' });
+
+        });
+        const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertSucceeds(db.collection('users').doc('bob').get());
+    });
+
+    test('profile displayName cannot exceed 50 chars', async () => {
+        const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertFails(db.collection('users').doc('alice').set({
+            displayName: 'A'.repeat(51),
+            createdAt: new Date(),
+        }));
+    });
+});
+
+// ================================================================
+// Events
+// ================================================================
+describe('Events', () => {
+    test('verified UBC user can create public event', async () => {
+        const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertSucceeds(db.collection('connectEvents').add({
+            title: 'Study Session',
+            description: 'Meet at Nest',
+            visibility: 'public',
+            createdBy: 'alice',
+            categoryId: 'Academic',
+            createdAt: new Date(),
+        }));
+    });
+
+    test('title cannot exceed 80 chars', async () => {
+        const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertFails(db.collection('connectEvents').add({
+            title: 'X'.repeat(81),
+            description: 'Test',
+            visibility: 'public',
+            createdBy: 'alice',
+            createdAt: new Date(),
+        }));
+    });
+
+    test('cannot create event as another user', async () => {
+        const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertFails(db.collection('connectEvents').add({
+            title: 'Test',
+            description: 'Test',
+            visibility: 'public',
+            createdBy: 'bob',
+            createdAt: new Date(),
+        }));
+    });
+
+    test('friends-only event visible to creator', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('connectEvents').doc('e1').set({
+                title: 'Private Event',
+                description: 'Friends only',
+                visibility: 'friends',
+                createdBy: 'alice',
+            });
+
+        });
+        const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertSucceeds(db.collection('connectEvents').doc('e1').get());
+    });
+
+    test('friends-only event hidden from non-friend', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('connectEvents').doc('e1').set({
+                title: 'Private Event',
+                description: 'Friends only',
+                visibility: 'friends',
+                createdBy: 'alice',
+            });
+
+        });
+        const db = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
+        await assertFails(db.collection('connectEvents').doc('e1').get());
+    });
+
+    test('friends-only event visible to friend', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('connectEvents').doc('e1').set({
+                title: 'Private Event',
+                description: 'Friends only',
+                visibility: 'friends',
+                createdBy: 'alice',
+            });
+            // Create friend edge: alice has bob as friend
+            await admin.collection('users').doc('alice').collection('friends').doc('bob').set({
+                friendUid: 'bob', since: new Date(), createdAt: new Date(),
+            });
+
+        });
+        const db = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
+        await assertSucceeds(db.collection('connectEvents').doc('e1').get());
+    });
+
+    test('only creator can delete an event', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('connectEvents').doc('e1').set({
+                title: 'Event', description: 'Test', visibility: 'public', createdBy: 'alice',
+            });
+
+        });
+        const aliceDb = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertSucceeds(aliceDb.collection('connectEvents').doc('e1').delete());
+    });
+
+    test('non-creator cannot delete an event', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('connectEvents').doc('e1').set({
+                title: 'Event', description: 'Test', visibility: 'public', createdBy: 'alice',
+            });
+
+        });
+        const bobDb = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
+        await assertFails(bobDb.collection('connectEvents').doc('e1').delete());
+    });
+});
+
+// ================================================================
+// Comments
+// ================================================================
+describe('Comments', () => {
+    test('can add a comment to a public event', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('connectEvents').doc('e1').set({
+                title: 'Public Event', description: 'D', visibility: 'public', createdBy: 'alice',
+            });
+
+        });
+        const db = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
+        await assertSucceeds(db.collection('connectEvents').doc('e1').collection('comments').add({
+            text: 'Great event!',
+            createdBy: 'bob',
+            createdByName: 'Bob',
+            createdAt: new Date(),
+            parentId: null,
+            rootId: null,
+            replyToUid: null,
+        }));
+    });
+
+    test('comment text cannot exceed 500 chars', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('connectEvents').doc('e1').set({
+                title: 'Event', description: 'D', visibility: 'public', createdBy: 'alice',
+            });
+
+        });
+        const db = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
+        await assertFails(db.collection('connectEvents').doc('e1').collection('comments').add({
+            text: 'X'.repeat(501),
+            createdBy: 'bob',
+            createdAt: new Date(),
+            parentId: null,
+            rootId: null,
+        }));
+    });
+
+    test('cannot spoof createdBy on a comment', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('connectEvents').doc('e1').set({
+                title: 'Event', description: 'D', visibility: 'public', createdBy: 'alice',
+            });
+
+        });
+        const db = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
+        await assertFails(db.collection('connectEvents').doc('e1').collection('comments').add({
+            text: 'Spoofed!',
+            createdBy: 'alice',
+            createdAt: new Date(),
+            parentId: null,
+        }));
+    });
+});
+
+// ================================================================
+// RSVPs
+// ================================================================
+describe('RSVPs', () => {
+    test('can RSVP to a public event', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('connectEvents').doc('e1').set({
+                title: 'Event', description: 'D', visibility: 'public', createdBy: 'alice',
+            });
+
+        });
+        const db = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
+        await assertSucceeds(db.collection('connectEvents').doc('e1').collection('rsvps').doc('bob').set({
+            userId: 'bob',
+            status: 'going',
+            createdAt: new Date(),
+        }));
+    });
+
+    test('cannot RSVP as another user', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('connectEvents').doc('e1').set({
+                title: 'Event', description: 'D', visibility: 'public', createdBy: 'alice',
+            });
+
+        });
+        const db = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
+        await assertFails(db.collection('connectEvents').doc('e1').collection('rsvps').doc('alice').set({
+            userId: 'alice',
+            status: 'going',
+            createdAt: new Date(),
+        }));
+    });
+
+    test('RSVP userId must match doc id', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('connectEvents').doc('e1').set({
+                title: 'Event', description: 'D', visibility: 'public', createdBy: 'alice',
+            });
+
+        });
+        const db = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
+        await assertFails(db.collection('connectEvents').doc('e1').collection('rsvps').doc('bob').set({
+            userId: 'alice',
+            status: 'going',
+            createdAt: new Date(),
+        }));
+    });
+
+    test('invalid RSVP status is rejected', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('connectEvents').doc('e1').set({
+                title: 'Event', description: 'D', visibility: 'public', createdBy: 'alice',
+            });
+
+        });
+        const db = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
+        await assertFails(db.collection('connectEvents').doc('e1').collection('rsvps').doc('bob').set({
+            userId: 'bob',
+            status: 'maybe',
+            createdAt: new Date(),
+        }));
+    });
+});
+
+// ================================================================
+// Friend Requests
+// ================================================================
+describe('Friend Requests', () => {
+    test('can create a pending friend request', async () => {
+        const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertSucceeds(db.collection('friendRequests').doc('alice_bob').set({
+            fromUid: 'alice',
+            toUid: 'bob',
+            status: 'pending',
+            createdAt: new Date(),
+        }));
+    });
+
+    test('cannot create request with non-pending status', async () => {
+        const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertFails(db.collection('friendRequests').doc('alice_bob').set({
+            fromUid: 'alice',
+            toUid: 'bob',
+            status: 'accepted',
+            createdAt: new Date(),
+        }));
+    });
+
+    test('cannot create request as another user', async () => {
+        const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertFails(db.collection('friendRequests').doc('bob_charlie').set({
+            fromUid: 'bob',
+            toUid: 'charlie',
+            status: 'pending',
+            createdAt: new Date(),
+        }));
+    });
+
+    test('ID must match fromUid_toUid', async () => {
+        const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertFails(db.collection('friendRequests').doc('wrong_id').set({
+            fromUid: 'alice',
+            toUid: 'bob',
+            status: 'pending',
+            createdAt: new Date(),
+        }));
+    });
+
+    test('receiver can accept a pending request', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('friendRequests').doc('alice_bob').set({
+                fromUid: 'alice', toUid: 'bob', status: 'pending', createdAt: new Date(),
+            });
+
+        });
+        const db = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
+        await assertSucceeds(db.collection('friendRequests').doc('alice_bob').update({
+            status: 'accepted', respondedAt: new Date(),
+        }));
+    });
+
+    test('sender cannot accept their own request', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('friendRequests').doc('alice_bob').set({
+                fromUid: 'alice', toUid: 'bob', status: 'pending', createdAt: new Date(),
+            });
+
+        });
+        const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertFails(db.collection('friendRequests').doc('alice_bob').update({
+            status: 'accepted',
+        }));
+    });
+
+    test('sender can cancel their pending request', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('friendRequests').doc('alice_bob').set({
+                fromUid: 'alice', toUid: 'bob', status: 'pending', createdAt: new Date(),
+            });
+
+        });
+        const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertSucceeds(db.collection('friendRequests').doc('alice_bob').update({
+            status: 'cancelled', respondedAt: new Date(),
+        }));
+    });
+});
+
+// ================================================================
+// Friend Edges
+// ================================================================
+describe('Friend Edges', () => {
+    test('can create own friend edge when accepted request exists', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('friendRequests').doc('alice_bob').set({
+                fromUid: 'alice', toUid: 'bob', status: 'accepted', createdAt: new Date(),
+            });
+
+        });
+        const db = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
+        await assertSucceeds(db.collection('users').doc('bob').collection('friends').doc('alice').set({
+            friendUid: 'alice', since: new Date(), createdAt: new Date(),
+        }));
+    });
+
+    test('cannot create friend edge for another user', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('friendRequests').doc('alice_bob').set({
+                fromUid: 'alice', toUid: 'bob', status: 'accepted', createdAt: new Date(),
+            });
+
+        });
+        const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertFails(db.collection('users').doc('bob').collection('friends').doc('alice').set({
+            friendUid: 'alice', since: new Date(), createdAt: new Date(),
+        }));
+    });
+    
+    // --- PREVIOUSLY FAILING TEST THAT WAS FIXED ---
+    test('cannot create friend edge without accepted request', async () => {
+        const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertFails(db.collection('users').doc('alice').collection('friends').doc('bob').set({
+            friendUid: 'bob', since: new Date(), createdAt: new Date(),
+        }));
+    });
+
+    test('can delete own friend edge', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('users').doc('alice').collection('friends').doc('bob').set({
+                friendUid: 'bob', since: new Date(), createdAt: new Date(),
+            });
+
+        });
+        const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertSucceeds(db.collection('users').doc('alice').collection('friends').doc('bob').delete());
+    });
+});
+
+// ================================================================
+// Notifications
+// ================================================================
+describe('Notifications', () => {
+    test('can create notification for another user (anti-spoofing)', async () => {
+        const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertSucceeds(db.collection('users').doc('bob').collection('notifications').add({
+            type: 'friend_request',
+            actorUid: 'alice',
+            targetUid: 'bob',
+            createdAt: new Date(),
+        }));
+    });
+
+    test('cannot spoof actorUid on notification', async () => {
+        const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertFails(db.collection('users').doc('bob').collection('notifications').add({
+            type: 'friend_request',
+            actorUid: 'charlie',
+            targetUid: 'bob',
+            createdAt: new Date(),
+        }));
+    });
+
+    test('targetUid must match collection owner', async () => {
+        const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertFails(db.collection('users').doc('bob').collection('notifications').add({
+            type: 'friend_request',
+            actorUid: 'alice',
+            targetUid: 'charlie',
+            createdAt: new Date(),
+        }));
+    });
+
+    test('only recipient can read their notifications', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('users').doc('bob').collection('notifications').doc('n1').set({
+                type: 'comment', actorUid: 'alice', targetUid: 'bob', createdAt: new Date(),
+            });
+
+        });
+        const bobDb = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
+        await assertSucceeds(bobDb.collection('users').doc('bob').collection('notifications').doc('n1').get());
+
+        const aliceDb = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertFails(aliceDb.collection('users').doc('bob').collection('notifications').doc('n1').get());
+    });
+
+    test('recipient can mark notification as read', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('users').doc('bob').collection('notifications').doc('n1').set({
+                type: 'comment', actorUid: 'alice', targetUid: 'bob', createdAt: new Date(), readAt: null,
+            });
+
+        });
+        const db = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
+        await assertSucceeds(db.collection('users').doc('bob').collection('notifications').doc('n1').update({
+            readAt: new Date(),
+        }));
+    });
+
+    test('invalid notification type is rejected', async () => {
+        const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertFails(db.collection('users').doc('bob').collection('notifications').add({
+            type: 'invalid_type',
+            actorUid: 'alice',
+            targetUid: 'bob',
+            createdAt: new Date(),
+        }));
     });
 });

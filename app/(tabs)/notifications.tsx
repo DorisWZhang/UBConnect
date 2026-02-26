@@ -1,120 +1,147 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image } from 'react-native';
+// app/(tabs)/notifications.tsx — Firestore-backed notifications
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useRouter } from 'expo-router';
+import { useAuth } from '@/src/auth/AuthContext';
+import { Notification } from '@/components/models/Notification';
+import { fetchNotifications, markNotificationRead } from '@/src/services/notifications';
+import { captureException } from '@/src/telemetry';
 
-const Notifications = () => {
+export default function NotificationsPage() {
+  const { user } = useAuth();
+  const router = useRouter();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const mockNotifications = [
-    {
-      id: '1',
-      title: 'New Friend Request',
-      description: 'Kim Jong Il has sent you a friend request.',
-      time: '2 hours ago',
-    },
-    {
-      id: '2',
-      title: 'Event Reminder',
-      description: 'Don’t forget the volleyball game tomorrow at 6 PM!',
-      time: '1 day ago',
-    },
-    {
-      id: '3',
-      title: 'Activity Liked',
-      description: 'Gregor liked your post.',
-      time: '3 days ago',
-    },
-  ];
+  const load = useCallback(async () => {
+    if (!user) { setLoading(false); return; }
+    try {
+      const result = await fetchNotifications(user.uid, { pageSize: 30 });
+      setNotifications(result.notifications);
+    } catch (err) {
+      captureException(err, { flow: 'loadNotifications' });
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
+  useEffect(() => { load(); }, [load]);
 
-  // useEffect(() => {
-  //   fetchNotifications();
-  // }, []);
+  const handlePress = async (n: Notification) => {
+    // Mark read
+    if (user && !n.readAt) {
+      await markNotificationRead(user.uid, n.id);
+      setNotifications((prev) =>
+        prev.map((item) => item.id === n.id ? { ...item, readAt: new Date() } : item),
+      );
+    }
+    // Navigate
+    if (n.type === 'friend_request') {
+      router.push(`/profile/${n.actorUid}`);
+    } else if (n.eventId) {
+      router.push(`/event/${n.eventId}`);
+    }
+  };
 
-  // const fetchNotifications = async () => {
-  //   try {
-  //     const data = await getNotifications();
-  //     setNotifications(data);
-  //   } catch (error) {
-  //     console.error('Error fetching notifications:', error);
-  //   }
-  // };
+  const getIcon = (type: string) => {
+    switch (type) {
+      case 'friend_request': return 'person-add-outline';
+      case 'event_live': return 'megaphone-outline';
+      case 'comment': return 'chatbubble-outline';
+      case 'reply': return 'chatbubbles-outline';
+      default: return 'notifications-outline';
+    }
+  };
 
-  const renderNotification = ({ item }: { item: { id: string; title: string; description: string; time: string } }) => (
-    <TouchableOpacity style={styles.notificationItem}>
-      <Text style={styles.title}>{item.title}</Text>
-      <Text style={styles.description}>{item.description}</Text>
-      <Text style={styles.time}>{item.time}</Text>
-    </TouchableOpacity>
-  );
+  const getMessage = (n: Notification) => {
+    const name = n.actorName || 'Someone';
+    switch (n.type) {
+      case 'friend_request': return `${name} sent you a friend request`;
+      case 'event_live': return 'Your event is now live!';
+      case 'comment': return `${name} commented on your event`;
+      case 'reply': return `${name} replied to your comment`;
+      default: return 'New notification';
+    }
+  };
+
+  const formatTime = (date: Date) => {
+    const diff = Date.now() - date.getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#866FD8" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Notifications</Text>
-      {mockNotifications.length > 0 ? (
-        <FlatList
-          data={mockNotifications}
-          renderItem={renderNotification}
-          keyExtractor={(item) => item.id}
-        />
+      {notifications.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Ionicons name="notifications-off-outline" size={48} color="#ccc" />
+          <Text style={styles.emptyText}>No notifications yet</Text>
+        </View>
       ) : (
-        <Text style={styles.noNotifications}>No notifications yet!</Text>
+        <FlatList
+          data={notifications}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[styles.notifItem, !item.readAt && styles.unreadItem]}
+              onPress={() => handlePress(item)}
+            >
+              <View style={[styles.iconCircle, !item.readAt && styles.unreadCircle]}>
+                <Ionicons
+                  name={getIcon(item.type) as keyof typeof Ionicons.glyphMap}
+                  size={20}
+                  color={!item.readAt ? '#fff' : '#866FD8'}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.notifText, !item.readAt && styles.unreadText]}>
+                  {getMessage(item)}
+                </Text>
+                <Text style={styles.notifTime}>{formatTime(item.createdAt)}</Text>
+              </View>
+              {!item.readAt && <View style={styles.unreadDot} />}
+            </TouchableOpacity>
+          )}
+        />
       )}
-      <Image
-        source={{ uri: 'https://i.imgur.com/nChKb5C.png' }}
-        style={styles.bottomImage}
-      />
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9f9f9',
-    padding: 16,
+  container: { flex: 1, backgroundColor: '#fff', paddingTop: 60 },
+  header: { fontSize: 24, fontWeight: '700', paddingHorizontal: 16, marginBottom: 16 },
+  notifItem: {
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16,
+    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
   },
-  header: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    marginTop: 16,
+  unreadItem: { backgroundColor: '#f8f5ff' },
+  iconCircle: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: '#f0ebff',
+    alignItems: 'center', justifyContent: 'center', marginRight: 12,
   },
-  notificationItem: {
-    padding: 12,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.5,
-    elevation: 3,
+  unreadCircle: { backgroundColor: '#866FD8' },
+  notifText: { fontSize: 15, color: '#333', lineHeight: 20 },
+  unreadText: { fontWeight: '600' },
+  notifTime: { fontSize: 12, color: '#999', marginTop: 2 },
+  unreadDot: {
+    width: 8, height: 8, borderRadius: 4, backgroundColor: '#866FD8', marginLeft: 8,
   },
-  title: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  description: {
-    fontSize: 14,
-    color: '#666',
-  },
-  time: {
-    fontSize: 12,
-    color: '#aaa',
-    marginTop: 4,
-  },
-  noNotifications: {
-    textAlign: 'center',
-    fontSize: 16,
-    color: '#aaa',
-    marginTop: 20,
-  },
-  bottomImage: {
-    width: 180,
-    height: 180,
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-  },
+  emptyState: { alignItems: 'center', marginTop: 80 },
+  emptyText: { color: '#999', fontSize: 16, marginTop: 12 },
 });
-
-export default Notifications;
