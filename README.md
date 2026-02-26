@@ -110,3 +110,20 @@ npm run test:rules
 ├── firestore.rules          # Security rules
 └── firebase.json            # Emulator config
 ```
+
+---
+
+## Migration Notes
+
+### Legacy Events: Missing `createdBy` / `visibility` Fields
+Events created before Phase 2 may lack `createdBy` or `visibility` fields. The Firestore rules now require these fields on event creation, but existing documents are unaffected. The UI gracefully handles missing `createdBy` by showing "Host info unavailable" instead of a broken profile link.
+
+**Optional one-time migration:** To backfill legacy events, run a Cloud Function or Admin SDK script that sets `createdBy` to the event's creator UID and `visibility` to `'public'` for any documents missing these fields.
+
+### Firestore Indexes & Rules Deployment
+After pulling these changes, deploy rules **and** indexes together:
+```bash
+firebase deploy --only firestore:rules,firestore:indexes
+```
+This ensures composite indexes required by hosted-events and attending-events queries are created.
+If a query fails with a `failed-precondition` error in the console, the app will show a friendly banner directing you to create the missing index.

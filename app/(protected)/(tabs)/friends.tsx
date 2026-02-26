@@ -15,7 +15,6 @@ import {
     searchUsers, sendFriendRequest, removeFriend, ensureFriendEdge,
     isPermissionDenied,
 } from '@/src/services/social';
-import { createNotification } from '@/src/services/notifications';
 import { captureException } from '@/src/telemetry';
 
 type Tab = 'friends' | 'requests' | 'search';
@@ -116,7 +115,12 @@ export default function FriendsPage() {
             const results = await searchUsers(text.trim());
             // Filter out self
             setSearchResults(results.filter((u) => u.uid !== user?.uid));
-        } catch {
+        } catch (err) {
+            if (isPermissionDenied(err)) {
+                Alert.alert('Error', 'Please verify your email to search users.');
+            } else {
+                Alert.alert('Search Error', 'Failed to search users. Please try again.');
+            }
         } finally {
             setSearchLoading(false);
         }
@@ -125,13 +129,8 @@ export default function FriendsPage() {
     const handleAddFriend = async (targetUid: string) => {
         if (!user) return;
         try {
-            await sendFriendRequest(user.uid, targetUid);
-            await createNotification({
-                type: 'friend_request',
-                actorUid: user.uid,
-                actorName: user.displayName || undefined,
-                targetUid,
-            });
+            // sendFriendRequest now creates the notification internally
+            await sendFriendRequest(user.uid, targetUid, user.displayName || undefined);
             Alert.alert('Sent!', 'Friend request sent.');
             loadRequests();
         } catch (err) {

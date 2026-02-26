@@ -1,19 +1,20 @@
 // app/(tabs)/explore.tsx — Events feed with category filter and event detail navigation
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
   ActivityIndicator, Alert,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
-import { QueryDocumentSnapshot } from 'firebase/firestore';
 import { useAuth } from '@/src/auth/AuthContext';
-import { useProfile } from '../ProfileContext';
+import { useProfile } from '@/app/ProfileContext';
 import { ConnectEvent } from '@/components/models/ConnectEvent';
 import {
   fetchEventsFeed, fetchInterestsFeed, searchEvents,
-  isPermissionDenied, FeedResult,
+  listFriends, isPermissionDenied, FeedResult,
+  isFailedPrecondition, getFirestoreErrorMessage,
 } from '@/src/services/social';
+import InlineNotice from '@/components/InlineNotice';
 import { captureException } from '@/src/telemetry';
 
 const CATEGORIES = [
@@ -30,31 +31,57 @@ export default function ExplorePage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [cursor, setCursor] = useState<QueryDocumentSnapshot | null>(null);
   const [hasMore, setHasMore] = useState(true);
+  const pageSizeRef = useRef(25);
+  const [feedError, setFeedError] = useState<string | null>(null);
+
+  const [friendUids, setFriendUids] = useState<string[]>([]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
 
+  // Load friend UIDs once on mount for safe feed queries
+  useEffect(() => {
+    const loadFriendUids = async () => {
+      if (!user) return;
+      try {
+        const edges = await listFriends(user.uid);
+        setFriendUids(edges.map(e => e.friendUid));
+      } catch {
+        // Non-critical — feed still works for public + own events
+      }
+    };
+    loadFriendUids();
+  }, [user]);
+
   const loadFeed = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
+    if (isRefresh) pageSizeRef.current = 25;
 
     try {
       let result: FeedResult;
+      const feedOpts = {
+        pageSize: pageSizeRef.current,
+        currentUid: user?.uid,
+        friendUids,
+      };
+
       if (categoryFilter !== 'All') {
-        result = await fetchEventsFeed({ pageSize: 25, categoryId: categoryFilter });
+        result = await fetchEventsFeed({ ...feedOpts, categoryId: categoryFilter });
       } else if (interests && interests.length > 0) {
-        result = await fetchInterestsFeed(interests, { pageSize: 25 });
+        result = await fetchInterestsFeed(interests, feedOpts);
       } else {
-        result = await fetchEventsFeed({ pageSize: 25 });
+        result = await fetchEventsFeed(feedOpts);
       }
       setEvents(result.events);
-      setCursor(result.lastDoc);
-      setHasMore(result.events.length >= 25);
+      setHasMore(result.events.length >= pageSizeRef.current);
+      setFeedError(null);
     } catch (err) {
       if (isPermissionDenied(err)) {
-        Alert.alert('Access Denied', 'Please verify your email to browse events.');
+        setFeedError('Please verify your email to browse events.');
+      } else if (isFailedPrecondition(err)) {
+        setFeedError(getFirestoreErrorMessage(err));
       } else {
         captureException(err, { flow: 'loadFeed' });
       }
@@ -62,18 +89,31 @@ export default function ExplorePage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [categoryFilter, interests]);
+  }, [categoryFilter, interests, user, friendUids]);
 
   useEffect(() => { loadFeed(); }, [loadFeed]);
 
   const handleLoadMore = async () => {
-    if (!hasMore || loadingMore || !cursor) return;
+    if (!hasMore || loadingMore) return;
     setLoadingMore(true);
     try {
-      const result = await fetchEventsFeed({ pageSize: 25, cursor, categoryId: categoryFilter !== 'All' ? categoryFilter : undefined });
-      setEvents((prev) => [...prev, ...result.events]);
-      setCursor(result.lastDoc);
-      setHasMore(result.events.length >= 25);
+      // Increase page size and re-fetch (merged queries don't support cursors)
+      pageSizeRef.current += 25;
+      const feedOpts = {
+        pageSize: pageSizeRef.current,
+        currentUid: user?.uid,
+        friendUids,
+      };
+      let result: FeedResult;
+      if (categoryFilter !== 'All') {
+        result = await fetchEventsFeed({ ...feedOpts, categoryId: categoryFilter });
+      } else if (interests && interests.length > 0) {
+        result = await fetchInterestsFeed(interests, feedOpts);
+      } else {
+        result = await fetchEventsFeed(feedOpts);
+      }
+      setEvents(result.events);
+      setHasMore(result.events.length >= pageSizeRef.current);
     } catch { }
     setLoadingMore(false);
   };
@@ -177,7 +217,11 @@ export default function ExplorePage() {
       />
 
       {/* Feed */}
-      {loading ? (
+      {feedError ? (
+        <View style={{ marginHorizontal: 16, marginTop: 20 }}>
+          <InlineNotice message={feedError} type="error" />
+        </View>
+      ) : loading ? (
         <ActivityIndicator size="large" color="#866FD8" style={{ marginTop: 40 }} />
       ) : (
         <FlatList

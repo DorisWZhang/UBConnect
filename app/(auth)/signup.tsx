@@ -5,13 +5,14 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    Alert,
     ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/src/auth/AuthContext';
+import InlineNotice from '@/components/InlineNotice';
+import { friendlyAuthError, validateSignupFields } from '@/src/auth/firebaseErrorMap';
 
 export default function SignupScreen() {
     const router = useRouter();
@@ -21,31 +22,30 @@ export default function SignupScreen() {
     const [password, setPassword] = useState('');
     const [confirm, setConfirm] = useState('');
     const [loading, setLoading] = useState(false);
+    const [notice, setNotice] = useState<{ message: string; type: 'error' | 'success' | 'info' } | null>(null);
+
+    const clearNotice = () => setNotice(null);
 
     const handleSignup = async () => {
-        if (!email || !password) {
-            Alert.alert('Error', 'Please fill in all fields.');
-            return;
-        }
-        if (password !== confirm) {
-            Alert.alert('Error', 'Passwords do not match.');
-            return;
-        }
-        if (password.length < 6) {
-            Alert.alert('Error', 'Password must be at least 6 characters.');
+        setNotice(null);
+
+        const validationError = validateSignupFields(email, password, confirm);
+        if (validationError) {
+            setNotice({ message: validationError, type: 'error' });
             return;
         }
 
         setLoading(true);
         try {
             await signUp(email.trim(), password);
-            Alert.alert(
-                'Verification Sent',
-                'A verification email has been sent to your UBC email. Please verify before logging in.',
-                [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }],
-            );
+            setNotice({
+                message: 'Verification email sent! Please check your inbox and verify before logging in.',
+                type: 'success',
+            });
+            // Navigate to login after a short delay so user sees the success message
+            setTimeout(() => router.replace('/(auth)/login'), 2500);
         } catch (err: any) {
-            Alert.alert('Sign Up Failed', err.message ?? 'Something went wrong.');
+            setNotice({ message: friendlyAuthError(err), type: 'error' });
         } finally {
             setLoading(false);
         }
@@ -59,12 +59,14 @@ export default function SignupScreen() {
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>Use your @student.ubc.ca or @ubc.ca email</Text>
 
+            <InlineNotice message={notice?.message ?? null} type={notice?.type} />
+
             <TextInput
                 style={styles.input}
                 placeholder="UBC Email"
                 placeholderTextColor="#aaa"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(t) => { setEmail(t); clearNotice(); }}
                 autoCapitalize="none"
                 keyboardType="email-address"
             />
@@ -73,18 +75,18 @@ export default function SignupScreen() {
                 placeholder="Password"
                 placeholderTextColor="#aaa"
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(t) => { setPassword(t); clearNotice(); }}
                 secureTextEntry
-                textContentType="oneTimeCode"
+                textContentType="password"
             />
             <TextInput
                 style={styles.input}
                 placeholder="Confirm Password"
                 placeholderTextColor="#aaa"
                 value={confirm}
-                onChangeText={setConfirm}
+                onChangeText={(t) => { setConfirm(t); clearNotice(); }}
                 secureTextEntry
-                textContentType="oneTimeCode"
+                textContentType="newPassword"
             />
 
             <TouchableOpacity
@@ -123,7 +125,7 @@ const styles = StyleSheet.create({
     subtitle: {
         fontSize: 14,
         color: '#888',
-        marginBottom: 30,
+        marginBottom: 10,
         textAlign: 'center',
     },
     input: {
@@ -136,6 +138,9 @@ const styles = StyleSheet.create({
         marginBottom: 14,
         backgroundColor: '#f9f9f9',
         color: '#333',
+        maxWidth: 500,
+        width: '100%',
+        alignSelf: 'center',
     },
     button: {
         backgroundColor: '#866FD8',
@@ -143,6 +148,9 @@ const styles = StyleSheet.create({
         borderRadius: 25,
         alignItems: 'center',
         marginTop: 10,
+        maxWidth: 500,
+        width: '100%',
+        alignSelf: 'center',
     },
     buttonDisabled: {
         opacity: 0.7,

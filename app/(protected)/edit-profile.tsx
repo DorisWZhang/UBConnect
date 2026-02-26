@@ -1,12 +1,12 @@
 // edit-profile.tsx — saves to Firestore via ProfileContext
 import React, { useState } from 'react';
-import { StyleSheet, View, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, View, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
-import { useProfile } from './ProfileContext';
-import { ScrollView } from 'react-native';
+import { useProfile } from '@/app/ProfileContext';
 import { logEvent } from '@/src/telemetry';
+import InlineNotice from '@/components/InlineNotice';
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -26,6 +26,7 @@ export default function EditProfilePage() {
   const [tempBio, setTempBio] = useState(bio || '');
   const [selectedInterests, setSelectedInterests] = useState<string[]>(interests);
   const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState<{ message: string; type: 'error' | 'success' | 'info' } | null>(null);
 
   const toggleInterest = (interest: string) => {
     setSelectedInterests((prev) =>
@@ -36,8 +37,9 @@ export default function EditProfilePage() {
   };
 
   const handleSave = async () => {
+    setNotice(null);
     if (!tempName.trim()) {
-      Alert.alert('Error', 'Name cannot be empty.');
+      setNotice({ message: 'Name cannot be empty.', type: 'error' });
       return;
     }
     setSaving(true);
@@ -51,7 +53,7 @@ export default function EditProfilePage() {
       await logEvent('profile_edit_saved');
       router.back();
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to save profile. Please try again.');
+      setNotice({ message: err.message || 'Failed to save profile. Please try again.', type: 'error' });
     } finally {
       setSaving(false);
     }
@@ -67,6 +69,8 @@ export default function EditProfilePage() {
         <ThemedText style={styles.title} type="title">
           Edit Profile
         </ThemedText>
+
+        <InlineNotice message={notice?.message ?? null} type={notice?.type} />
 
         {/* Name Input */}
         <View style={styles.fieldContainer}>

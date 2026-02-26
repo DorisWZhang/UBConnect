@@ -3,7 +3,8 @@ import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import MapView, { Marker, Callout } from 'react-native-maps';
 import { useRouter } from 'expo-router';
 import { ConnectEvent } from '@/components/models/ConnectEvent';
-import { fetchEventsFeed } from '@/src/services/social';
+import { fetchEventsFeed, listFriends } from '@/src/services/social';
+import { useAuth } from '@/src/auth/AuthContext';
 import { captureException } from '@/src/telemetry';
 import { Text } from 'react-native';
 
@@ -23,13 +24,27 @@ const UBC_REGION = {
 
 export default function MapScreenNative() {
     const router = useRouter();
+    const { user } = useAuth();
     const [events, setEvents] = useState<ConnectEvent[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const loadEvents = async () => {
             try {
-                const result = await fetchEventsFeed({ pageSize: 50 });
+                // Load friend UIDs for safe feed
+                let friendUids: string[] = [];
+                if (user) {
+                    try {
+                        const edges = await listFriends(user.uid);
+                        friendUids = edges.map(e => e.friendUid);
+                    } catch { /* non-critical */ }
+                }
+
+                const result = await fetchEventsFeed({
+                    pageSize: 50,
+                    currentUid: user?.uid,
+                    friendUids,
+                });
                 // Filter events with valid coordinates (locationGeo or legacy lat/lng)
                 setEvents(result.events.filter((e) =>
                     e.locationGeo && e.locationGeo.latitude != null && e.locationGeo.longitude != null,
@@ -41,7 +56,7 @@ export default function MapScreenNative() {
             }
         };
         loadEvents();
-    }, []);
+    }, [user]);
 
     return (
         <View style={styles.container}>

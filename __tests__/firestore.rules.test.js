@@ -342,7 +342,7 @@ describe('Comments', () => {
 // RSVPs
 // ================================================================
 describe('RSVPs', () => {
-    test('can RSVP to a public event', async () => {
+    test('can RSVP to a public event with matching visibilitySnapshot', async () => {
         await testEnv.withSecurityRulesDisabled(async (ctx) => {
             const admin = ctx.firestore();
             await admin.collection('connectEvents').doc('e1').set({
@@ -352,6 +352,38 @@ describe('RSVPs', () => {
         });
         const db = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
         await assertSucceeds(db.collection('connectEvents').doc('e1').collection('rsvps').doc('bob').set({
+            userId: 'bob',
+            status: 'going',
+            visibilitySnapshot: 'public',
+            createdAt: new Date(),
+        }));
+    });
+
+    test('cannot RSVP to a public event with mismatched visibilitySnapshot', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('connectEvents').doc('e1').set({
+                title: 'Event', description: 'D', visibility: 'public', createdBy: 'alice',
+            });
+        });
+        const db = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
+        await assertFails(db.collection('connectEvents').doc('e1').collection('rsvps').doc('bob').set({
+            userId: 'bob',
+            status: 'going',
+            visibilitySnapshot: 'friends', // Mismatched!
+            createdAt: new Date(),
+        }));
+    });
+
+    test('cannot RSVP without visibilitySnapshot (keys check)', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('connectEvents').doc('e1').set({
+                title: 'Event', description: 'D', visibility: 'public', createdBy: 'alice',
+            });
+        });
+        const db = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
+        await assertFails(db.collection('connectEvents').doc('e1').collection('rsvps').doc('bob').set({
             userId: 'bob',
             status: 'going',
             createdAt: new Date(),
@@ -525,7 +557,7 @@ describe('Friend Edges', () => {
             friendUid: 'alice', since: new Date(), createdAt: new Date(),
         }));
     });
-    
+
     // --- PREVIOUSLY FAILING TEST THAT WAS FIXED ---
     test('cannot create friend edge without accepted request', async () => {
         const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
@@ -618,5 +650,171 @@ describe('Notifications', () => {
             targetUid: 'bob',
             createdAt: new Date(),
         }));
+    });
+});
+
+// ================================================================
+// Phase 2: Batch friend accept (getAfter/existsAfter)
+// ================================================================
+describe('Batch Friend Accept', () => {
+    test('batch: update request + create both friend edges succeeds', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('friendRequests').doc('alice_bob').set({
+                fromUid: 'alice', toUid: 'bob', status: 'pending', createdAt: new Date(),
+            });
+        });
+        // Bob accepts: updates request status + creates both edges in one batch
+        const db = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
+        const batch = db.batch();
+
+        const reqRef = db.collection('friendRequests').doc('alice_bob');
+        batch.update(reqRef, { status: 'accepted', respondedAt: new Date() });
+
+        const edgeA = db.collection('users').doc('bob').collection('friends').doc('alice');
+        batch.set(edgeA, { friendUid: 'alice', since: new Date(), createdAt: new Date() });
+
+        const edgeB = db.collection('users').doc('alice').collection('friends').doc('bob');
+        batch.set(edgeB, { friendUid: 'bob', since: new Date(), createdAt: new Date() });
+
+        await assertSucceeds(batch.commit());
+    });
+
+    test('cannot create friend edge without batch-accepted request', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('friendRequests').doc('alice_bob').set({
+                fromUid: 'alice', toUid: 'bob', status: 'pending', createdAt: new Date(),
+            });
+        });
+        // Try to create edge without accepting request
+        const db = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
+        await assertFails(db.collection('users').doc('bob').collection('friends').doc('alice').set({
+            friendUid: 'alice', since: new Date(), createdAt: new Date(),
+        }));
+    });
+});
+
+// ================================================================
+// Phase 2: Comment creation with known rootId
+// ================================================================
+describe('Comment creation (no update needed)', () => {
+    test('can create top-level comment with rootId set to own doc id', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('connectEvents').doc('e1').set({
+                title: 'Event', description: 'D', visibility: 'public', createdBy: 'alice',
+            });
+        });
+        const db = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
+        // Using a known doc ID and setting rootId to that ID on create
+        const commentRef = db.collection('connectEvents').doc('e1').collection('comments').doc('comment1');
+        await assertSucceeds(commentRef.set({
+            text: 'Top-level comment',
+            createdBy: 'bob',
+            createdByName: 'Bob',
+            createdAt: new Date(),
+            parentId: null,
+            rootId: 'comment1',
+            replyToUid: null,
+        }));
+    });
+
+    test('can create reply with parentId pointing to root', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('connectEvents').doc('e1').set({
+                title: 'Event', description: 'D', visibility: 'public', createdBy: 'alice',
+            });
+            await admin.collection('connectEvents').doc('e1').collection('comments').doc('root1').set({
+                text: 'Root', createdBy: 'alice', createdAt: new Date(),
+                parentId: null, rootId: 'root1', replyToUid: null,
+            });
+        });
+        const db = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
+        await assertSucceeds(db.collection('connectEvents').doc('e1').collection('comments').doc('reply1').set({
+            text: 'A reply!',
+            createdBy: 'bob',
+            createdAt: new Date(),
+            parentId: 'root1',
+            rootId: 'root1',
+            replyToUid: 'alice',
+        }));
+    });
+
+    test('cannot update a comment (rootId or text)', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('connectEvents').doc('e1').set({
+                title: 'Event', description: 'D', visibility: 'public', createdBy: 'alice',
+            });
+            await admin.collection('connectEvents').doc('e1').collection('comments').doc('c1').set({
+                text: 'Original', createdBy: 'bob', createdAt: new Date(),
+                parentId: null, rootId: null, replyToUid: null,
+            });
+        });
+        const db = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
+        await assertFails(db.collection('connectEvents').doc('e1').collection('comments').doc('c1').update({
+            rootId: 'c1',
+        }));
+    });
+});
+
+// ================================================================
+// Phase 2: User profile isAuthorized gating
+// ================================================================
+describe('User profile isAuthorized gating', () => {
+    test('unverified user cannot create own profile', async () => {
+        const db = testEnv.authenticatedContext('alice', unverifiedUbcAuth('alice')).firestore();
+        await assertFails(db.collection('users').doc('alice').set({
+            displayName: 'Alice',
+            displayNameLower: 'alice',
+            bio: '',
+            interests: [],
+            createdAt: new Date(),
+            lastActiveAt: new Date(),
+        }));
+    });
+
+    test('non-UBC user cannot create own profile', async () => {
+        const db = testEnv.authenticatedContext('alice', verifiedNonUbcAuth('alice')).firestore();
+        await assertFails(db.collection('users').doc('alice').set({
+            displayName: 'Alice',
+            displayNameLower: 'alice',
+            bio: '',
+            interests: [],
+            createdAt: new Date(),
+            lastActiveAt: new Date(),
+        }));
+    });
+});
+
+// ================================================================
+// Phase 2: Friend edge cleanup (both sides)
+// ================================================================
+describe('Friend edge bidirectional delete', () => {
+    test('friend can delete their edge from the other user list', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            // Alice has Bob as friend
+            await admin.collection('users').doc('alice').collection('friends').doc('bob').set({
+                friendUid: 'bob', since: new Date(), createdAt: new Date(),
+            });
+        });
+        // Bob (the friend) can delete Alice's edge for bob
+        const db = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
+        await assertSucceeds(db.collection('users').doc('alice').collection('friends').doc('bob').delete());
+    });
+
+    test('unrelated user cannot delete friend edge', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('users').doc('alice').collection('friends').doc('bob').set({
+                friendUid: 'bob', since: new Date(), createdAt: new Date(),
+            });
+        });
+        // Charlie (unrelated) cannot delete alice-bob edge
+        const db = testEnv.authenticatedContext('charlie', verifiedUbcAuth('charlie')).firestore();
+        await assertFails(db.collection('users').doc('alice').collection('friends').doc('bob').delete());
     });
 });

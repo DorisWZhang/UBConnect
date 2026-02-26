@@ -33,9 +33,28 @@ import { logFirestoreError, isPermissionDenied, logEvent } from '@/src/telemetry
 // ================================================================
 export { isPermissionDenied } from '@/src/telemetry';
 
+export function isFailedPrecondition(error: unknown): boolean {
+    if (error && typeof error === 'object') {
+        const code = (error as any).code;
+        return code === 'failed-precondition' || code === 'FAILED_PRECONDITION';
+    }
+    return false;
+}
+
 export function getFirestoreErrorMessage(error: unknown): string {
     if (isPermissionDenied(error)) {
         return 'You do not have permission to perform this action. Please verify your email.';
+    }
+    if (isFailedPrecondition(error)) {
+        const msg = (error as any).message || '';
+        if (__DEV__ && msg.includes('https://')) {
+            // In dev, extract the index URL for convenience
+            const urlMatch = msg.match(/(https:\/\/console\.firebase\.google\.com\S+)/);
+            if (urlMatch) {
+                return `Missing Firestore index. Create it here: ${urlMatch[1]}`;
+            }
+        }
+        return 'This query requires a database index. An admin must create it before this feature works.';
     }
     return 'An unexpected error occurred. Please try again.';
 }
@@ -155,7 +174,7 @@ export async function fetchUserProfile(uid: string): Promise<UserProfile | null>
 // Friend Requests
 // ================================================================
 
-export async function sendFriendRequest(fromUid: string, toUid: string): Promise<void> {
+export async function sendFriendRequest(fromUid: string, toUid: string, actorName?: string): Promise<void> {
     const id = makeFriendRequestId(fromUid, toUid);
     const ref = doc(db, 'friendRequests', id);
     try {
@@ -164,6 +183,14 @@ export async function sendFriendRequest(fromUid: string, toUid: string): Promise
             toUid,
             status: 'pending',
             createdAt: serverTimestamp(),
+        });
+        // Create notification for the target user
+        const { createNotification } = await import('./notifications');
+        await createNotification({
+            type: 'friend_request',
+            actorUid: fromUid,
+            actorName,
+            targetUid: toUid,
         });
         await logEvent('friend_request_sent', { fromUid, toUid });
     } catch (error) {
@@ -184,10 +211,18 @@ export async function acceptFriendRequest(fromUid: string, toUid: string): Promi
             respondedAt: serverTimestamp(),
         });
 
-        // Create the acceptor's friend edge (toUid adds fromUid as friend)
-        const friendRef = doc(db, 'users', toUid, 'friends', fromUid);
-        batch.set(friendRef, {
+        // Create BOTH friend edges in the same batch
+        // toUid adds fromUid as friend
+        const edgeA = doc(db, 'users', toUid, 'friends', fromUid);
+        batch.set(edgeA, {
             friendUid: fromUid,
+            since: serverTimestamp(),
+            createdAt: serverTimestamp(),
+        });
+        // fromUid adds toUid as friend
+        const edgeB = doc(db, 'users', fromUid, 'friends', toUid);
+        batch.set(edgeB, {
+            friendUid: toUid,
             since: serverTimestamp(),
             createdAt: serverTimestamp(),
         });
@@ -255,17 +290,10 @@ export async function ensureFriendEdge(uid: string, friendUid: string): Promise<
  */
 export async function removeFriend(uid: string, friendUid: string): Promise<void> {
     try {
-        // Delete our edge
+        // Delete both edges — rules now allow the friend (friendUid == auth.uid) to delete
         const myEdge = doc(db, 'users', uid, 'friends', friendUid);
-        await deleteDoc(myEdge);
-        // The other user must delete their own edge (rules enforce isOwner)
-        // For now we attempt but it may fail due to rules — that's OK
-        try {
-            const theirEdge = doc(db, 'users', friendUid, 'friends', uid);
-            await deleteDoc(theirEdge);
-        } catch {
-            // Expected to fail — their edge must be deleted by them
-        }
+        const theirEdge = doc(db, 'users', friendUid, 'friends', uid);
+        await Promise.all([deleteDoc(myEdge), deleteDoc(theirEdge)]);
         await logEvent('friend_removed', { uid, friendUid });
     } catch (error) {
         await logFirestoreError(error, { screen: 'social', operation: 'removeFriend', uid });
@@ -369,44 +397,113 @@ export interface FeedResult {
     lastDoc: QueryDocumentSnapshot | null;
 }
 
+/**
+ * Helper: chunk array into groups of N for Firestore 'in' queries (max 10).
+ */
+function chunkArray<T>(arr: T[], size: number): T[][] {
+    const result: T[][] = [];
+    for (let i = 0; i < arr.length; i += size) {
+        result.push(arr.slice(i, i + size));
+    }
+    return result;
+}
+
+/**
+ * SAFE feed strategy: runs parallel visibility-filtered queries to avoid
+ * permission-denied on friends-only docs the user cannot read.
+ *
+ * A) public events
+ * B) own events
+ * C) friends-only events from friend UIDs (chunked in groups of 10)
+ */
 export async function fetchEventsFeed(options: {
     pageSize?: number;
-    cursor?: QueryDocumentSnapshot | null;
+    currentUid?: string;
+    friendUids?: string[];
     categoryId?: string;
 } = {}): Promise<FeedResult> {
-    const { pageSize = 25, cursor = null, categoryId } = options;
+    const { pageSize = 25, currentUid, friendUids = [], categoryId } = options;
     const startTime = Date.now();
     try {
         const ref = collection(db, 'connectEvents');
-        const constraints: any[] = [];
+        const allEvents: ConnectEvent[] = [];
+        const seenIds = new Set<string>();
 
-        if (categoryId) {
-            constraints.push(where('categoryId', '==', categoryId));
-        }
+        const categoryConstraints = categoryId ? [where('categoryId', '==', categoryId)] : [];
 
-        constraints.push(orderBy('createdAt', 'desc'));
-        constraints.push(limit(pageSize));
-        if (cursor) constraints.push(startAfter(cursor));
+        // Query A: public events
+        const publicQ = query(
+            ref,
+            where('visibility', '==', 'public'),
+            ...categoryConstraints,
+            orderBy('createdAt', 'desc'),
+            limit(pageSize),
+        );
 
-        const q = query(ref, ...constraints);
-        const snap = await getDocs(q);
+        // Query B: own events (only if currentUid is provided)
+        const ownPromise = currentUid
+            ? getDocs(query(
+                ref,
+                where('createdBy', '==', currentUid),
+                ...categoryConstraints,
+                orderBy('createdAt', 'desc'),
+                limit(pageSize),
+            ))
+            : Promise.resolve(null);
 
-        const events: ConnectEvent[] = [];
-        snap.docs.forEach((d) => {
-            const event = fromFirestoreDoc(d.id, d.data());
-            if (event && event.title) events.push(event);
-        });
+        // Query C: friends-only events from friends (chunked)
+        const friendChunks = currentUid ? chunkArray(friendUids.slice(0, 100), 10) : [];
+        const friendPromises = friendChunks
+            .filter(chunk => chunk.length > 0)
+            .map(chunk =>
+                getDocs(query(
+                    ref,
+                    where('visibility', '==', 'friends'),
+                    where('createdBy', 'in', chunk),
+                    ...categoryConstraints,
+                    orderBy('createdAt', 'desc'),
+                    limit(pageSize),
+                )),
+            );
+
+        const [publicSnap, ownSnap, ...friendSnaps] = await Promise.all([
+            getDocs(publicQ),
+            ownPromise,
+            ...friendPromises,
+        ]);
+
+        // Merge results
+        const addDocs = (snap: { docs: QueryDocumentSnapshot[] } | null) => {
+            if (!snap) return;
+            snap.docs.forEach((d) => {
+                if (!seenIds.has(d.id)) {
+                    const event = fromFirestoreDoc(d.id, d.data());
+                    if (event && event.title) {
+                        allEvents.push(event);
+                        seenIds.add(d.id);
+                    }
+                }
+            });
+        };
+
+        addDocs(publicSnap);
+        addDocs(ownSnap);
+        friendSnaps.forEach(addDocs);
+
+        // Sort by createdAt desc and take pageSize
+        allEvents.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        const sliced = allEvents.slice(0, pageSize);
 
         await logEvent('feed_fetch', {
-            count: events.length,
+            count: sliced.length,
             latencyMs: Date.now() - startTime,
-            hasMore: snap.docs.length === pageSize,
-            source: categoryId ? 'category' : 'all',
+            hasMore: allEvents.length > pageSize,
+            source: categoryId ? 'category' : 'safe_feed',
         });
 
         return {
-            events,
-            lastDoc: snap.docs.length > 0 ? snap.docs[snap.docs.length - 1] : null,
+            events: sliced,
+            lastDoc: null, // cursor-based pagination not used with merged queries
         };
     } catch (error) {
         await logFirestoreError(error, {
@@ -418,72 +515,46 @@ export async function fetchEventsFeed(options: {
 }
 
 /**
- * Interests-first feed: Query events matching user interests first, then others.
- * Returns merged/deduped list.
+ * Interests-first safe feed: runs visibility-filtered queries, then ranks
+ * events matching user interests higher.
  */
 export async function fetchInterestsFeed(
     userInterests: string[],
-    options: { pageSize?: number; cursor?: QueryDocumentSnapshot | null } = {},
+    options: { pageSize?: number; currentUid?: string; friendUids?: string[] } = {},
 ): Promise<FeedResult> {
-    const { pageSize = 25 } = options;
+    const { pageSize = 25, currentUid, friendUids = [] } = options;
     const startTime = Date.now();
 
     try {
-        // Firestore 'in' supports up to 30 values
-        const interestSubset = userInterests.slice(0, 10);
-        const allEvents: ConnectEvent[] = [];
-        const seenIds = new Set<string>();
-        let lastDoc: QueryDocumentSnapshot | null = null;
+        // Fetch using the safe feed (no category filter — get all)
+        const result = await fetchEventsFeed({
+            pageSize: pageSize * 2, // over-fetch to rank
+            currentUid,
+            friendUids,
+        });
 
-        // Query 1: Events matching interests
-        if (interestSubset.length > 0) {
-            const ref = collection(db, 'connectEvents');
-            const q = query(
-                ref,
-                where('categoryId', 'in', interestSubset),
-                orderBy('createdAt', 'desc'),
-                limit(pageSize),
-            );
-            const snap = await getDocs(q);
-            snap.docs.forEach((d) => {
-                const event = fromFirestoreDoc(d.id, d.data());
-                if (event && event.title && !seenIds.has(d.id)) {
-                    allEvents.push(event);
-                    seenIds.add(d.id);
-                }
-            });
-            if (snap.docs.length > 0) lastDoc = snap.docs[snap.docs.length - 1];
-        }
+        const interestSet = new Set(userInterests.map(i => i.toLowerCase()));
 
-        // Query 2: Recent events (fill remaining slots)
-        const remaining = pageSize - allEvents.length;
-        if (remaining > 0) {
-            const ref = collection(db, 'connectEvents');
-            const q = query(
-                ref,
-                orderBy('createdAt', 'desc'),
-                limit(remaining + seenIds.size), // over-fetch to account for dedup
-            );
-            const snap = await getDocs(q);
-            snap.docs.forEach((d) => {
-                if (!seenIds.has(d.id)) {
-                    const event = fromFirestoreDoc(d.id, d.data());
-                    if (event && event.title) {
-                        allEvents.push(event);
-                        seenIds.add(d.id);
-                    }
-                }
-            });
-            if (snap.docs.length > 0 && !lastDoc) lastDoc = snap.docs[snap.docs.length - 1];
-        }
+        // Sort: interest-matching events first, then by createdAt desc
+        const scored = result.events.map(e => ({
+            event: e,
+            matchesInterest: interestSet.has((e.categoryId || '').toLowerCase()),
+        }));
+
+        scored.sort((a, b) => {
+            if (a.matchesInterest !== b.matchesInterest) return a.matchesInterest ? -1 : 1;
+            return b.event.createdAt.getTime() - a.event.createdAt.getTime();
+        });
+
+        const sliced = scored.slice(0, pageSize).map(s => s.event);
 
         await logEvent('feed_fetch', {
-            count: allEvents.length,
+            count: sliced.length,
             latencyMs: Date.now() - startTime,
             source: 'interests_first',
         });
 
-        return { events: allEvents.slice(0, pageSize), lastDoc };
+        return { events: sliced, lastDoc: null };
     } catch (error) {
         await logFirestoreError(error, { screen: 'explore', operation: 'fetchInterestsFeed' });
         throw error;
@@ -569,6 +640,16 @@ export async function createEvent(
 
         const docRef = await addDoc(collection(db, 'connectEvents'), eventData);
 
+        // Create event_live notification (self-skip handled in createNotification)
+        const { createNotification } = await import('./notifications');
+        await createNotification({
+            type: 'event_live',
+            actorUid: data.createdBy,
+            actorName: data.createdByName,
+            targetUid: data.createdBy,
+            eventId: docRef.id,
+        });
+
         await logEvent('posting_success', { latencyMs: Date.now() - startMs, eventId: docRef.id });
 
         return docRef.id;
@@ -641,9 +722,10 @@ export async function fetchReplies(
     const { pageSize = 10, cursor = null } = options;
     try {
         const ref = collection(db, 'connectEvents', eventId, 'comments');
+        // Use parentId == rootId to fetch replies. This avoids the invalid
+        // inequality filter (parentId != null) that conflicts with Firestore ordering.
         const constraints: any[] = [
-            where('rootId', '==', rootId),
-            where('parentId', '!=', null),
+            where('parentId', '==', rootId),
             orderBy('createdAt', 'asc'),
             limit(pageSize),
         ];
@@ -713,36 +795,34 @@ export async function addEventComment(
     createdByName?: string,
     threading?: { parentId: string; rootId: string; replyToUid: string },
 ): Promise<EventComment> {
-    const ref = collection(db, 'connectEvents', eventId, 'comments');
+    const colRef = collection(db, 'connectEvents', eventId, 'comments');
     try {
+        // Generate a known doc ID first so we can set rootId at create time
+        // (rules disallow comment updates, so we can't set rootId after creation)
+        const newRef = doc(colRef);
         const docData: Record<string, any> = {
             text: text.trim(),
             createdBy,
             createdAt: serverTimestamp(),
             parentId: threading?.parentId ?? null,
-            rootId: threading?.rootId ?? null, // will be set to own id for top-level
+            rootId: threading?.rootId ?? newRef.id, // self-referencing for top-level
             replyToUid: threading?.replyToUid ?? null,
         };
         if (createdByName) docData.createdByName = createdByName;
 
-        const docRef = await addDoc(ref, docData);
-
-        // For top-level comments, update rootId to point to self
-        if (!threading) {
-            await updateDoc(docRef, { rootId: docRef.id });
-        }
+        await setDoc(newRef, docData);
 
         await logEvent('comment_added', { eventId, isReply: !!threading });
 
         // Return optimistic comment
         return {
-            id: docRef.id,
+            id: newRef.id,
             text: text.trim(),
             createdBy,
             createdByName,
             createdAt: new Date(),
             parentId: threading?.parentId ?? null,
-            rootId: threading?.rootId ?? docRef.id,
+            rootId: threading?.rootId ?? newRef.id,
             replyToUid: threading?.replyToUid ?? null,
         };
     } catch (error) {
@@ -762,9 +842,15 @@ export async function rsvpToEvent(
 ): Promise<void> {
     const ref = doc(db, 'connectEvents', eventId, 'rsvps', uid);
     try {
+        // Fetch parent event visibility to snapshot into RSVP doc
+        const eventRef = doc(db, 'connectEvents', eventId);
+        const eventSnap = await getDoc(eventRef);
+        const visibility = eventSnap.exists() ? (eventSnap.data().visibility || 'public') : 'public';
+
         await setDoc(ref, {
             userId: uid,
             status,
+            visibilitySnapshot: visibility,
             createdAt: serverTimestamp(),
         });
         await logEvent('rsvp', { eventId, status });
@@ -837,13 +923,14 @@ export async function searchUsers(
             ref,
             where('displayNameLower', '>=', lower),
             where('displayNameLower', '<=', lower + '\uf8ff'),
+            orderBy('displayNameLower'),
             limit(pageSize),
         );
         const snap = await getDocs(q);
         return snap.docs.map((d) => userProfileFromFirestoreDoc(d.id, d.data())).filter(Boolean) as UserProfile[];
     } catch (error) {
         await logFirestoreError(error, { screen: 'search', operation: 'searchUsers' });
-        return [];
+        throw error; // Don't swallow — surface errors to UI
     }
 }
 
@@ -876,28 +963,51 @@ export async function searchEvents(
 // Attending events (collectionGroup query)
 // ================================================================
 
+export interface AttendingResult {
+    ids: string[];
+    error: string | null;
+}
+
+/**
+ * Fetch event IDs that a user is attending.
+ * - Self view: query all RSVPs for this user.
+ * - Other user: query only RSVPs with visibilitySnapshot=='public' to avoid permission errors.
+ */
 export async function fetchUserAttendingEventIds(
     uid: string,
+    viewerUid?: string,
     options: { pageSize?: number } = {},
-): Promise<string[]> {
+): Promise<AttendingResult> {
     const { pageSize = 20 } = options;
+    const isSelf = viewerUid === uid;
     try {
-        const q = query(
-            collectionGroup(db, 'rsvps'),
+        const constraints: any[] = [
             where('userId', '==', uid),
             where('status', '==', 'going'),
-            limit(pageSize),
+        ];
+        // When viewing another user, only show public-event RSVPs
+        if (!isSelf) {
+            constraints.push(where('visibilitySnapshot', '==', 'public'));
+        }
+        constraints.push(limit(pageSize));
+
+        const q = query(
+            collectionGroup(db, 'rsvps'),
+            ...constraints,
         );
         const snap = await getDocs(q);
-        // Extract parent event IDs from doc paths
-        return snap.docs.map((d) => {
+        const ids = snap.docs.map((d) => {
             // Path: connectEvents/{eventId}/rsvps/{uid}
             const segments = d.ref.path.split('/');
             return segments[1]; // eventId
         });
+        return { ids, error: null };
     } catch (error) {
         await logFirestoreError(error, { screen: 'profile', operation: 'fetchUserAttendingEventIds', uid });
-        return [];
+        if (isFailedPrecondition(error)) {
+            return { ids: [], error: getFirestoreErrorMessage(error) };
+        }
+        throw error;
     }
 }
 

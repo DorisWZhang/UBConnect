@@ -16,6 +16,7 @@ import {
 import { createNotification } from '@/src/services/notifications';
 import { ConnectEvent } from '@/components/models/ConnectEvent';
 import { logFirestoreError } from '@/src/telemetry';
+import InlineNotice from '@/components/InlineNotice';
 
 export default function EventDetailScreen() {
     const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -193,11 +194,10 @@ export default function EventDetailScreen() {
 
     if (error || !event) {
         return (
-            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <Ionicons name="alert-circle-outline" size={48} color="#e65100" />
-                <Text style={{ marginTop: 12, color: '#555', textAlign: 'center', paddingHorizontal: 30 }}>
-                    {error || 'Event not found'}
-                </Text>
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16 }]}>
+                <View style={{ width: '100%', marginBottom: 16 }}>
+                    <InlineNotice message={error || 'Event not found'} type="error" />
+                </View>
                 <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
                     <Text style={styles.backButtonText}>Go Back</Text>
                 </TouchableOpacity>
@@ -244,18 +244,27 @@ export default function EventDetailScreen() {
                 ) : null}
 
                 {/* Host */}
-                <TouchableOpacity
-                    style={styles.hostRow}
-                    onPress={() => router.push(`/profile/${event.createdBy}`)}
-                >
-                    <View style={styles.hostAvatar}>
-                        <Text style={styles.hostInitial}>
-                            {event.createdBy.charAt(0).toUpperCase()}
-                        </Text>
+                {event.createdBy ? (
+                    <TouchableOpacity
+                        style={styles.hostRow}
+                        onPress={() => router.push(`/profile/${event.createdBy}`)}
+                    >
+                        <View style={styles.hostAvatar}>
+                            <Text style={styles.hostInitial}>
+                                {event.createdBy.charAt(0).toUpperCase()}
+                            </Text>
+                        </View>
+                        <Text style={styles.hostText}>View Host Profile</Text>
+                        <Ionicons name="chevron-forward" size={16} color="#866FD8" />
+                    </TouchableOpacity>
+                ) : (
+                    <View style={styles.hostRow}>
+                        <View style={[styles.hostAvatar, { backgroundColor: '#ccc' }]}>
+                            <Ionicons name="person-outline" size={18} color="#fff" />
+                        </View>
+                        <Text style={[styles.hostText, { color: '#999' }]}>Host info unavailable</Text>
                     </View>
-                    <Text style={styles.hostText}>View Host Profile</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#866FD8" />
-                </TouchableOpacity>
+                )}
 
                 {/* RSVP */}
                 <View style={styles.rsvpRow}>

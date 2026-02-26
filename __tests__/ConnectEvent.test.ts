@@ -81,23 +81,23 @@ describe('validateEvent', () => {
         expect(result.valid).toBe(true);
     });
 
-    it('fails when startAt is after endAt', () => {
+    it('fails when startTime is after endTime', () => {
         const result = validateEvent({
             title: 'Event',
             description: 'Desc',
-            startAt: new Date('2025-12-31'),
-            endAt: new Date('2025-01-01'),
+            startTime: new Date('2025-12-31'),
+            endTime: new Date('2025-01-01'),
         });
         expect(result.valid).toBe(false);
-        expect(result.errors).toContain('startAt must be before endAt');
+        expect(result.errors).toContain('startTime must be before endTime');
     });
 
-    it('passes when startAt is before endAt', () => {
+    it('passes when startTime is before endTime', () => {
         const result = validateEvent({
             title: 'Event',
             description: 'Desc',
-            startAt: new Date('2025-01-01'),
-            endAt: new Date('2025-12-31'),
+            startTime: new Date('2025-01-01'),
+            endTime: new Date('2025-12-31'),
         });
         expect(result.valid).toBe(true);
     });
@@ -111,14 +111,14 @@ describe('fromFirestoreDoc', () => {
         const data = {
             title: 'Beach Volleyball',
             description: 'Meet at Kitsilano',
-            location: 'Kits Beach',
-            category: 'Fitness',
+            locationName: 'Kits Beach',
+            categoryId: 'Fitness',
             visibility: 'public',
             capacity: 12,
             createdBy: 'uid123',
             createdAt: { seconds: 1700000000, nanoseconds: 0 },
-            startAt: { seconds: 1700100000, nanoseconds: 0 },
-            endAt: { seconds: 1700200000, nanoseconds: 0 },
+            startTime: { seconds: 1700100000, nanoseconds: 0 },
+            endTime: { seconds: 1700200000, nanoseconds: 0 },
         };
 
         const event = fromFirestoreDoc('doc1', data);
@@ -126,14 +126,14 @@ describe('fromFirestoreDoc', () => {
         expect(event!.id).toBe('doc1');
         expect(event!.title).toBe('Beach Volleyball');
         expect(event!.description).toBe('Meet at Kitsilano');
-        expect(event!.location).toBe('Kits Beach');
-        expect(event!.category).toBe('Fitness');
+        expect(event!.locationName).toBe('Kits Beach');
+        expect(event!.categoryId).toBe('Fitness');
         expect(event!.visibility).toBe('public');
         expect(event!.capacity).toBe(12);
         expect(event!.createdBy).toBe('uid123');
         expect(event!.createdAt).toBeInstanceOf(Date);
-        expect(event!.startAt).toBeInstanceOf(Date);
-        expect(event!.endAt).toBeInstanceOf(Date);
+        expect(event!.startTime).toBeInstanceOf(Date);
+        expect(event!.endTime).toBeInstanceOf(Date);
     });
 
     it('returns null for undefined data', () => {
@@ -150,12 +150,12 @@ describe('fromFirestoreDoc', () => {
         const event = fromFirestoreDoc('doc2', data);
         expect(event).not.toBeNull();
         expect(event!.title).toBe('Quick Meetup');
-        expect(event!.location).toBe('');
-        expect(event!.category).toBe('');
+        expect(event!.locationName).toBe('');
+        expect(event!.categoryId).toBe('');
         expect(event!.visibility).toBe('public');
         expect(event!.capacity).toBeNull();
-        expect(event!.startAt).toBeNull();
-        expect(event!.endAt).toBeNull();
+        expect(event!.startTime).toBeNull();
+        expect(event!.endTime).toBeNull();
         expect(event!.createdBy).toBe('');
     });
 
@@ -190,9 +190,31 @@ describe('fromFirestoreDoc', () => {
         const event = fromFirestoreDoc('doc6', {
             title: 'Test',
             description: 'Test',
-            startAt: '2025-06-15T10:00:00Z',
+            startTime: '2025-06-15T10:00:00Z',
         });
-        expect(event!.startAt).toBeInstanceOf(Date);
+        expect(event!.startTime).toBeInstanceOf(Date);
+    });
+
+    it('maps legacy location/category fields', () => {
+        const event = fromFirestoreDoc('legacy', {
+            title: 'Legacy Event',
+            description: 'Old schema',
+            location: 'Old Location',
+            category: 'Sports',
+        });
+        expect(event!.locationName).toBe('Old Location');
+        expect(event!.categoryId).toBe('Sports');
+    });
+
+    it('maps legacy startAt/endAt fields', () => {
+        const event = fromFirestoreDoc('legacy2', {
+            title: 'Legacy Dates',
+            description: 'With startAt',
+            startAt: { seconds: 1700100000, nanoseconds: 0 },
+            endAt: { seconds: 1700200000, nanoseconds: 0 },
+        });
+        expect(event!.startTime).toBeInstanceOf(Date);
+        expect(event!.endTime).toBeInstanceOf(Date);
     });
 });
 
@@ -200,18 +222,18 @@ describe('fromFirestoreDoc', () => {
 // Max-length validation
 // ---------------------------------------------------------------------------
 describe('validateEvent max-length', () => {
-    it('fails when title exceeds 200 characters', () => {
+    it('fails when title exceeds 80 characters', () => {
         const result = validateEvent({
-            title: 'A'.repeat(201),
+            title: 'A'.repeat(81),
             description: 'Valid description',
         });
         expect(result.valid).toBe(false);
-        expect(result.errors).toContain('title must be 200 characters or less');
+        expect(result.errors).toContain('title must be 80 characters or less');
     });
 
-    it('passes with exactly 200-char title', () => {
+    it('passes with exactly 80-char title', () => {
         const result = validateEvent({
-            title: 'A'.repeat(200),
+            title: 'A'.repeat(80),
             description: 'Valid description',
         });
         expect(result.valid).toBe(true);
@@ -236,38 +258,43 @@ describe('validateEvent max-length', () => {
 });
 
 // ---------------------------------------------------------------------------
-// latitude / longitude fields
+// locationGeo fields
 // ---------------------------------------------------------------------------
-describe('fromFirestoreDoc latitude/longitude', () => {
-    it('maps latitude and longitude when present', () => {
+describe('fromFirestoreDoc locationGeo', () => {
+    it('maps locationGeo from plain object', () => {
         const event = fromFirestoreDoc('doc7', {
             title: 'Geo Event',
             description: 'With coords',
+            locationGeo: { latitude: 49.2606, longitude: -123.246 },
+        });
+        expect(event!.locationGeo).toEqual({ latitude: 49.2606, longitude: -123.246 });
+    });
+
+    it('maps legacy latitude/longitude fields to locationGeo', () => {
+        const event = fromFirestoreDoc('doc8', {
+            title: 'Legacy Geo',
+            description: 'With old coords',
             latitude: 49.2606,
             longitude: -123.246,
         });
-        expect(event!.latitude).toBe(49.2606);
-        expect(event!.longitude).toBe(-123.246);
+        expect(event!.locationGeo).toEqual({ latitude: 49.2606, longitude: -123.246 });
     });
 
-    it('defaults latitude and longitude to null when missing', () => {
-        const event = fromFirestoreDoc('doc8', {
+    it('defaults locationGeo to null when missing', () => {
+        const event = fromFirestoreDoc('doc9', {
             title: 'No Coords',
             description: 'Without coords',
         });
-        expect(event!.latitude).toBeNull();
-        expect(event!.longitude).toBeNull();
+        expect(event!.locationGeo).toBeNull();
     });
 
-    it('defaults non-numeric latitude/longitude to null', () => {
-        const event = fromFirestoreDoc('doc9', {
+    it('defaults non-numeric latitude/longitude to null locationGeo', () => {
+        const event = fromFirestoreDoc('doc10', {
             title: 'Test',
             description: 'Test',
             latitude: 'not-a-number',
             longitude: null,
         });
-        expect(event!.latitude).toBeNull();
-        expect(event!.longitude).toBeNull();
+        expect(event!.locationGeo).toBeNull();
     });
 });
-

@@ -10,6 +10,7 @@ export interface Rsvp {
     id: string;                    // doc ID = uid
     userId: string;                // duplicate of uid for collectionGroup queries
     status: RsvpStatus;
+    visibilitySnapshot?: 'public' | 'friends'; // snapshot of parent event visibility at RSVP time
     createdAt: Date;
 }
 
@@ -60,10 +61,14 @@ export function rsvpFromFirestoreDoc(
 
     const status = VALID_STATUSES.includes(data.status) ? data.status : 'going';
 
+    const vis = data.visibilitySnapshot;
+    const visibilitySnapshot = (vis === 'public' || vis === 'friends') ? vis : undefined;
+
     return {
         id,
         userId: typeof data.userId === 'string' ? data.userId : id,
         status,
+        visibilitySnapshot,
         createdAt: toDate(data.createdAt) ?? new Date(),
     };
 }

@@ -14,7 +14,7 @@ if (Platform.OS !== 'web') {
 
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/src/auth/AuthContext';
-import { useProfile } from '../ProfileContext';
+import { useProfile } from '@/app/ProfileContext';
 import { validateEvent } from '@/components/models/ConnectEvent';
 import { createEvent, isPermissionDenied } from '@/src/services/social';
 import { logEvent } from '@/src/telemetry';
@@ -197,7 +197,22 @@ export default function PostingPage() {
       {/* Start / End Time */}
       <Text style={styles.label}>Start Time</Text>
       {Platform.OS === 'web' ? (
-        <Text style={styles.input}>Web picker not supported yet.</Text>
+        React.createElement('input', {
+          type: 'datetime-local',
+          value: new Date(startDate.getTime() - startDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+          onChange: (e: any) => setStartDate(new Date(e.target.value)),
+          style: {
+            padding: '12px',
+            borderRadius: '10px',
+            border: 'none',
+            backgroundColor: '#f5f5f5',
+            fontSize: '15px',
+            color: '#333',
+            fontFamily: 'inherit',
+            width: '100%',
+            boxSizing: 'border-box',
+          },
+        })
       ) : (
         <>
           <TouchableOpacity style={styles.dateButton} onPress={() => setShowStartPicker(!showStartPicker)}>
@@ -219,7 +234,22 @@ export default function PostingPage() {
 
       <Text style={styles.label}>End Time</Text>
       {Platform.OS === 'web' ? (
-        <Text style={styles.input}>Web picker not supported yet.</Text>
+        React.createElement('input', {
+          type: 'datetime-local',
+          value: new Date(endDate.getTime() - endDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+          onChange: (e: any) => setEndDate(new Date(e.target.value)),
+          style: {
+            padding: '12px',
+            borderRadius: '10px',
+            border: 'none',
+            backgroundColor: '#f5f5f5',
+            fontSize: '15px',
+            color: '#333',
+            fontFamily: 'inherit',
+            width: '100%',
+            boxSizing: 'border-box',
+          },
+        })
       ) : (
         <>
           <TouchableOpacity style={styles.dateButton} onPress={() => setShowEndPicker(!showEndPicker)}>

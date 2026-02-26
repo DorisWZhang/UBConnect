@@ -5,13 +5,14 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    Alert,
     ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/src/auth/AuthContext';
+import InlineNotice from '@/components/InlineNotice';
+import { friendlyAuthError, validateLoginFields } from '@/src/auth/firebaseErrorMap';
 
 export default function LoginScreen() {
     const router = useRouter();
@@ -20,10 +21,14 @@ export default function LoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [notice, setNotice] = useState<{ message: string; type: 'error' | 'success' | 'info' } | null>(null);
 
     const handleLogin = async () => {
-        if (!email || !password) {
-            Alert.alert('Error', 'Please fill in all fields.');
+        setNotice(null);
+
+        const validationError = validateLoginFields(email, password);
+        if (validationError) {
+            setNotice({ message: validationError, type: 'error' });
             return;
         }
 
@@ -32,7 +37,7 @@ export default function LoginScreen() {
             await logIn(email.trim(), password);
             router.replace('/(tabs)/explore');
         } catch (err: any) {
-            Alert.alert('Login Failed', err.message ?? 'Invalid credentials.');
+            setNotice({ message: friendlyAuthError(err), type: 'error' });
         } finally {
             setLoading(false);
         }
@@ -46,12 +51,14 @@ export default function LoginScreen() {
             <Text style={styles.title}>Welcome Back</Text>
             <Text style={styles.subtitle}>Log in with your UBC email</Text>
 
+            <InlineNotice message={notice?.message ?? null} type={notice?.type} />
+
             <TextInput
                 style={styles.input}
                 placeholder="UBC Email"
                 placeholderTextColor="#aaa"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(t) => { setEmail(t); setNotice(null); }}
                 autoCapitalize="none"
                 keyboardType="email-address"
             />
@@ -60,9 +67,9 @@ export default function LoginScreen() {
                 placeholder="Password"
                 placeholderTextColor="#aaa"
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(t) => { setPassword(t); setNotice(null); }}
                 secureTextEntry
-                textContentType="oneTimeCode"
+                textContentType="password"
             />
 
             <TouchableOpacity
@@ -101,7 +108,7 @@ const styles = StyleSheet.create({
     subtitle: {
         fontSize: 14,
         color: '#888',
-        marginBottom: 30,
+        marginBottom: 10,
         textAlign: 'center',
     },
     input: {
@@ -114,6 +121,9 @@ const styles = StyleSheet.create({
         marginBottom: 14,
         backgroundColor: '#f9f9f9',
         color: '#333',
+        maxWidth: 500,
+        width: '100%',
+        alignSelf: 'center',
     },
     button: {
         backgroundColor: '#866FD8',
@@ -121,6 +131,9 @@ const styles = StyleSheet.create({
         borderRadius: 25,
         alignItems: 'center',
         marginTop: 10,
+        maxWidth: 500,
+        width: '100%',
+        alignSelf: 'center',
     },
     buttonDisabled: {
         opacity: 0.7,

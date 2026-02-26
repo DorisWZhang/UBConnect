@@ -1,25 +1,28 @@
 // verify-email.tsx — Screen shown to unverified users
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { sendEmailVerification } from 'firebase/auth';
 import { useAuth } from '@/src/auth/AuthContext';
 import { logEvent } from '@/src/telemetry';
+import InlineNotice from '@/components/InlineNotice';
 
 export default function VerifyEmailScreen() {
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, logOut } = useAuth();
     const [loading, setLoading] = useState(false);
+    const [notice, setNotice] = useState<{ message: string; type: 'error' | 'success' | 'info' } | null>(null);
 
     const handleResend = async () => {
         if (!user) return;
         setLoading(true);
+        setNotice(null);
         try {
             await sendEmailVerification(user);
-            Alert.alert('Email Sent', 'A new verification email has been sent. Please check your inbox.');
+            setNotice({ message: 'A new verification email has been sent. Please check your inbox.', type: 'success' });
             await logEvent('verify_email_resent');
         } catch (err: any) {
-            Alert.alert('Error', err.message || 'Failed to send verification email.');
+            setNotice({ message: err.message || 'Failed to send verification email.', type: 'error' });
         } finally {
             setLoading(false);
         }
@@ -28,19 +31,34 @@ export default function VerifyEmailScreen() {
     const handleRefresh = async () => {
         if (!user) return;
         setLoading(true);
+        setNotice(null);
         try {
             await user.reload();
+            // Force token refresh so the ID token carries email_verified: true
+            await user.getIdToken(true);
             if (user.emailVerified) {
                 await logEvent('email_verified');
                 router.replace('/(tabs)/explore');
             } else {
-                Alert.alert('Not Yet Verified', 'Your email is not verified yet. Please check your inbox and click the verification link.');
+                setNotice({
+                    message: 'Your email is not verified yet. Please check your inbox and click the verification link.',
+                    type: 'info',
+                });
             }
         } catch (err: any) {
-            Alert.alert('Error', err.message || 'Failed to check verification status.');
+            setNotice({ message: err.message || 'Failed to check verification status.', type: 'error' });
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleBackToLogin = async () => {
+        try {
+            await logOut();
+        } catch {
+            // best-effort logout
+        }
+        router.replace('/landing');
     };
 
     return (
@@ -55,6 +73,8 @@ export default function VerifyEmailScreen() {
                 Please check your inbox and click the verification link to access all features of UBConnect.
             </Text>
 
+            <InlineNotice message={notice?.message ?? null} type={notice?.type} />
+
             {loading && <ActivityIndicator size="large" color="#866FD8" style={{ marginVertical: 20 }} />}
 
             <TouchableOpacity style={styles.button} onPress={handleRefresh} disabled={loading}>
@@ -67,7 +87,7 @@ export default function VerifyEmailScreen() {
 
             <TouchableOpacity
                 style={styles.linkButton}
-                onPress={() => router.replace('/landing')}
+                onPress={handleBackToLogin}
             >
                 <Text style={styles.linkText}>Back to Login</Text>
             </TouchableOpacity>
@@ -107,13 +127,14 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#777',
         textAlign: 'center',
-        marginBottom: 30,
+        marginBottom: 10,
         lineHeight: 20,
     },
     button: {
         backgroundColor: '#866FD8',
         height: 50,
         width: 300,
+        maxWidth: '90%',
         alignItems: 'center',
         justifyContent: 'center',
         borderRadius: 25,

@@ -46,7 +46,8 @@ service cloud.firestore {
       allow read: if isAuthorized();
 
       // Users can only create/update their own profile
-      allow create: if isOwner(uid)
+      allow create: if isAuthorized()
+                    && isOwner(uid)
                     && request.resource.data.keys().hasOnly([
                          'displayName', 'displayNameLower', 'photoURL', 'bio', 'program',
                          'year', 'interests', 'createdAt', 'lastActiveAt'
@@ -55,7 +56,8 @@ service cloud.firestore {
                     && request.resource.data.displayName.size() >= 1
                     && request.resource.data.displayName.size() <= 50;
 
-      allow update: if isOwner(uid)
+      allow update: if isAuthorized()
+                    && isOwner(uid)
                     && request.resource.data.keys().hasOnly([
                          'displayName', 'displayNameLower', 'photoURL', 'bio', 'program',
                          'year', 'interests', 'createdAt', 'lastActiveAt'
@@ -79,18 +81,20 @@ service cloud.firestore {
                       && request.resource.data.keys().hasOnly(['friendUid', 'since', 'createdAt'])
                       && (
                            (
-                             // Case 1: I sent the request (I am fromUid)
-                             exists(/databases/$(database)/documents/friendRequests/$(uid + '_' + friendUid))
-                             && get(/databases/$(database)/documents/friendRequests/$(uid + '_' + friendUid)).data.status == 'accepted'
+                             // Case 1: I sent the request (I am fromUid) — use getAfter for batch
+                             existsAfter(/databases/$(database)/documents/friendRequests/$(uid + '_' + friendUid))
+                             && getAfter(/databases/$(database)/documents/friendRequests/$(uid + '_' + friendUid)).data.status == 'accepted'
                            ) || (
-                             // Case 2: They sent the request (I am toUid)
-                             exists(/databases/$(database)/documents/friendRequests/$(friendUid + '_' + uid))
-                             && get(/databases/$(database)/documents/friendRequests/$(friendUid + '_' + uid)).data.status == 'accepted'
+                             // Case 2: They sent the request (I am toUid) — use getAfter for batch
+                             existsAfter(/databases/$(database)/documents/friendRequests/$(friendUid + '_' + uid))
+                             && getAfter(/databases/$(database)/documents/friendRequests/$(friendUid + '_' + uid)).data.status == 'accepted'
                            )
                          );
 
         // A user can only delete their own friend edge
-        allow delete: if isOwner(uid);
+        // Owner can delete their own edge, OR the friend can delete their edge from this user's list
+        allow delete: if isOwner(uid)
+                      || (isAuthorized() && friendUid == request.auth.uid);
 
         allow update: if false;
       }
@@ -230,8 +234,9 @@ service cloud.firestore {
         allow create, update: if isAuthorized()
                       && rsvpUid == request.auth.uid
                       && request.resource.data.status in ['going', 'interested']
-                      && request.resource.data.keys().hasOnly(['userId', 'status', 'createdAt'])
-                      && request.resource.data.userId == request.auth.uid;
+                      && request.resource.data.keys().hasOnly(['userId', 'status', 'createdAt', 'visibilitySnapshot'])
+                      && request.resource.data.userId == request.auth.uid
+                      && (!('visibilitySnapshot' in request.resource.data) || request.resource.data.visibilitySnapshot == get(/databases/$(database)/documents/connectEvents/$(eventId)).data.visibility);
 
         allow delete: if isAuthorized() && rsvpUid == request.auth.uid;
       }

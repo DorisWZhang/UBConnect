@@ -34,17 +34,20 @@ export async function createNotification(data: {
 
     const ref = collection(db, 'users', data.targetUid, 'notifications');
     try {
-        await addDoc(ref, {
+        // Only include fields that are defined to match rules hasOnly constraint
+        const notifDoc: Record<string, any> = {
             type: data.type,
             actorUid: data.actorUid,
-            actorName: data.actorName || null,
             targetUid: data.targetUid,
-            eventId: data.eventId || null,
-            commentId: data.commentId || null,
-            rootCommentId: data.rootCommentId || null,
             createdAt: serverTimestamp(),
             readAt: null,
-        });
+        };
+        if (data.actorName) notifDoc.actorName = data.actorName;
+        if (data.eventId) notifDoc.eventId = data.eventId;
+        if (data.commentId) notifDoc.commentId = data.commentId;
+        if (data.rootCommentId) notifDoc.rootCommentId = data.rootCommentId;
+
+        await addDoc(ref, notifDoc);
         await logEvent('notification_created', { type: data.type, targetUid: data.targetUid });
     } catch (error) {
         await logFirestoreError(error, {

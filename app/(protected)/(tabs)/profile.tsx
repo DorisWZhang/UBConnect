@@ -6,12 +6,14 @@ import { ThemedView } from '@/components/ThemedView';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/src/auth/AuthContext';
-import { useProfile } from '../ProfileContext';
+import { useProfile } from '@/app/ProfileContext';
 import { ConnectEvent } from '@/components/models/ConnectEvent';
 import {
   listFriends, FriendEdge, fetchEventsByCreator,
   fetchUserAttendingEventIds, fetchEventsByIds,
+  isFailedPrecondition, getFirestoreErrorMessage
 } from '@/src/services/social';
+import InlineNotice from '@/components/InlineNotice';
 import { captureException } from '@/src/telemetry';
 
 export default function ProfilePage() {
@@ -22,29 +24,45 @@ export default function ProfilePage() {
   const [friends, setFriends] = useState<FriendEdge[]>([]);
   const [hostedEvents, setHostedEvents] = useState<ConnectEvent[]>([]);
   const [attendingEvents, setAttendingEvents] = useState<ConnectEvent[]>([]);
+  const [hostedError, setHostedError] = useState<string | null>(null);
+  const [attendingError, setAttendingError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       if (!user) { setLoading(false); return; }
-      try {
-        const [friendsList, hosted, attendingIds] = await Promise.all([
-          listFriends(user.uid),
-          fetchEventsByCreator(user.uid),
-          fetchUserAttendingEventIds(user.uid),
-        ]);
-        setFriends(friendsList);
-        setHostedEvents(hosted);
 
-        if (attendingIds.length > 0) {
-          const events = await fetchEventsByIds(attendingIds);
+      try {
+        const friendsList = await listFriends(user.uid);
+        setFriends(friendsList);
+      } catch (err) {
+        captureException(err, { flow: 'loadProfileFriends' });
+      }
+
+      try {
+        const hosted = await fetchEventsByCreator(user.uid);
+        setHostedEvents(hosted);
+      } catch (err) {
+        if (isFailedPrecondition(err)) {
+          setHostedError(getFirestoreErrorMessage(err));
+        } else {
+          captureException(err, { flow: 'loadProfileHosted' });
+        }
+      }
+
+      try {
+        const attendingResult = await fetchUserAttendingEventIds(user.uid, user.uid);
+        if (attendingResult.error) {
+          setAttendingError(attendingResult.error);
+        } else if (attendingResult.ids.length > 0) {
+          const events = await fetchEventsByIds(attendingResult.ids);
           setAttendingEvents(events);
         }
       } catch (err) {
-        captureException(err, { flow: 'loadProfile' });
-      } finally {
-        setLoading(false);
+        captureException(err, { flow: 'loadProfileAttending' });
       }
+
+      setLoading(false);
     };
     load();
   }, [user]);
@@ -124,7 +142,9 @@ export default function ProfilePage() {
         {/* Hosted Events */}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Your Events</ThemedText>
-          {hostedEvents.length === 0 ? (
+          {hostedError ? (
+            <InlineNotice message={hostedError} type="error" />
+          ) : hostedEvents.length === 0 ? (
             <ThemedText style={styles.emptyText}>No events created yet</ThemedText>
           ) : (
             hostedEvents.map((e) => (
@@ -145,7 +165,9 @@ export default function ProfilePage() {
         {/* Attending */}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Attending</ThemedText>
-          {attendingEvents.length === 0 ? (
+          {attendingError ? (
+            <InlineNotice message={attendingError} type="error" />
+          ) : attendingEvents.length === 0 ? (
             <ThemedText style={styles.emptyText}>Not attending any events</ThemedText>
           ) : (
             attendingEvents.map((e) => (

@@ -12,10 +12,11 @@ import {
     fetchUserProfile, fetchEventsByCreator, fetchUserAttendingEventIds,
     fetchEventsByIds, getFriendStatus, sendFriendRequest,
     cancelFriendRequest, acceptFriendRequest, removeFriend,
-    isPermissionDenied,
+    isPermissionDenied, isFailedPrecondition, getFirestoreErrorMessage,
 } from '@/src/services/social';
 import { createNotification } from '@/src/services/notifications';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import InlineNotice from '@/components/InlineNotice';
 
 export default function ProfileViewScreen() {
     const { uid } = useLocalSearchParams<{ uid: string }>();
@@ -29,37 +30,50 @@ export default function ProfileViewScreen() {
     const [attendingEvents, setAttendingEvents] = useState<ConnectEvent[]>([]);
     const [friendStatus, setFriendStatus] = useState<'friends' | 'pending_sent' | 'pending_received' | 'none'>('none');
     const [actionLoading, setActionLoading] = useState(false);
+    const [hostedError, setHostedError] = useState<string | null>(null);
+    const [attendingError, setAttendingError] = useState<string | null>(null);
 
     useEffect(() => {
         const load = async () => {
             if (!uid) return;
             try {
-                const [p, hosted] = await Promise.all([
-                    fetchUserProfile(uid),
-                    fetchEventsByCreator(uid),
-                ]);
+                const p = await fetchUserProfile(uid);
                 setProfile(p);
-                setHostedEvents(hosted);
+            } catch (err) {
+                if (isPermissionDenied(err)) {
+                    Alert.alert('Access Denied', 'Verify your email to view profiles.');
+                }
+            }
 
+            try {
+                const hosted = await fetchEventsByCreator(uid);
+                setHostedEvents(hosted);
+            } catch (err) {
+                if (isFailedPrecondition(err)) {
+                    setHostedError(getFirestoreErrorMessage(err));
+                }
+            }
+
+            try {
                 // Attending events
-                const attendingIds = await fetchUserAttendingEventIds(uid);
-                if (attendingIds.length > 0) {
-                    const events = await fetchEventsByIds(attendingIds);
+                const attendingResult = await fetchUserAttendingEventIds(uid, user?.uid);
+                if (attendingResult.error) {
+                    setAttendingError(attendingResult.error);
+                } else if (attendingResult.ids.length > 0) {
+                    const events = await fetchEventsByIds(attendingResult.ids);
                     setAttendingEvents(events);
                 }
+            } catch (err) { }
 
+            try {
                 // Friend status
                 if (user && !isSelf) {
                     const status = await getFriendStatus(user.uid, uid);
                     setFriendStatus(status);
                 }
-            } catch (err) {
-                if (isPermissionDenied(err)) {
-                    Alert.alert('Access Denied', 'Verify your email to view profiles.');
-                }
-            } finally {
-                setLoading(false);
-            }
+            } catch (err) { }
+
+            setLoading(false);
         };
         load();
     }, [uid, user]);
@@ -198,7 +212,9 @@ export default function ProfileViewScreen() {
                     <ThemedText style={styles.sectionTitle}>
                         Hosting ({hostedEvents.length})
                     </ThemedText>
-                    {hostedEvents.length === 0 ? (
+                    {hostedError ? (
+                        <InlineNotice message={hostedError} type="error" />
+                    ) : hostedEvents.length === 0 ? (
                         <ThemedText style={styles.emptyText}>No events hosted yet</ThemedText>
                     ) : (
                         hostedEvents.map((e) => (
@@ -219,7 +235,9 @@ export default function ProfileViewScreen() {
                     <ThemedText style={styles.sectionTitle}>
                         Attending ({attendingEvents.length})
                     </ThemedText>
-                    {attendingEvents.length === 0 ? (
+                    {attendingError ? (
+                        <InlineNotice message={attendingError} type="error" />
+                    ) : attendingEvents.length === 0 ? (
                         <ThemedText style={styles.emptyText}>Not attending any events</ThemedText>
                     ) : (
                         attendingEvents.map((e) => (

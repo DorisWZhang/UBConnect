@@ -57,6 +57,78 @@
             ]
         },
         {
+            "collectionGroup": "connectEvents",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "visibility",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "connectEvents",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "visibility",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdBy",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "connectEvents",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "visibility",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "categoryId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "connectEvents",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "visibility",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdBy",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "categoryId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
             "collectionGroup": "comments",
             "queryScope": "COLLECTION",
             "fields": [
@@ -74,10 +146,6 @@
             "collectionGroup": "comments",
             "queryScope": "COLLECTION",
             "fields": [
-                {
-                    "fieldPath": "rootId",
-                    "order": "ASCENDING"
-                },
                 {
                     "fieldPath": "parentId",
                     "order": "ASCENDING"
@@ -103,11 +171,19 @@
             ]
         },
         {
-            "collectionGroup": "users",
-            "queryScope": "COLLECTION",
+            "collectionGroup": "rsvps",
+            "queryScope": "COLLECTION_GROUP",
             "fields": [
                 {
-                    "fieldPath": "displayNameLower",
+                    "fieldPath": "userId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "status",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "visibilitySnapshot",
                     "order": "ASCENDING"
                 }
             ]
