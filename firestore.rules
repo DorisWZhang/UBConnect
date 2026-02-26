@@ -129,9 +129,13 @@ service cloud.firestore {
     // ================================================================
     match /friendRequests/{requestId} {
       // Both sender and receiver can read their requests
+      // We check resource == null first to allow safe existence-checks (getDoc on non-existent document)
       allow read: if isAuthorized()
-                  && (request.auth.uid == resource.data.fromUid
-                      || request.auth.uid == resource.data.toUid);
+                  && (
+                      resource == null
+                      || request.auth.uid == resource.data.fromUid
+                      || request.auth.uid == resource.data.toUid
+                  );
 
       // Create: only the sender, deterministic ID, status must be 'pending'
       allow create: if isAuthorized()
@@ -266,7 +270,7 @@ service cloud.firestore {
       // We cannot realistically check `canReadEvent(eventId)` for a massive group query.
       // Instead, we ensure the query filters strictly on visibilitySnapshot == 'public' OR the user is querying their own RSVPs.
       allow read: if isAuthorized() && (
-        request.auth.uid == rsvpUid || resource.data.visibilitySnapshot == 'public'
+        resource.data.userId == request.auth.uid || resource.data.visibilitySnapshot == 'public'
       );
     }
 
