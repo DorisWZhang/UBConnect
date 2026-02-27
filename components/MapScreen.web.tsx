@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { StyleSheet, View, ActivityIndicator, Text } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { ConnectEvent } from '@/components/models/ConnectEvent';
 import { fetchEventsFeed, listFriends } from '@/src/services/social';
 import { useAuth } from '@/src/auth/AuthContext';
@@ -66,34 +66,36 @@ export default function MapScreenWeb() {
         }
     }, []);
 
-    useEffect(() => {
-        const loadEvents = async () => {
-            try {
-                let friendUids: string[] = [];
-                if (user) {
-                    try {
-                        const edges = await listFriends(user.uid);
-                        friendUids = edges.map((e) => e.friendUid);
-                    } catch { /* non-critical */ }
+    useFocusEffect(
+        useCallback(() => {
+            const loadEvents = async () => {
+                try {
+                    let friendUids: string[] = [];
+                    if (user) {
+                        try {
+                            const edges = await listFriends(user.uid);
+                            friendUids = edges.map((e) => e.friendUid);
+                        } catch { /* non-critical */ }
+                    }
+
+                    const result = await fetchEventsFeed({
+                        pageSize: 50,
+                        currentUid: user?.uid,
+                        friendUids,
+                    });
+
+                    setEvents(result.events.filter((e) =>
+                        e.locationGeo && e.locationGeo.latitude != null && e.locationGeo.longitude != null
+                    ));
+                } catch (err) {
+                    captureException(err, { flow: 'mapLoadEventsWeb' });
+                } finally {
+                    setLoading(false);
                 }
-
-                const result = await fetchEventsFeed({
-                    pageSize: 50,
-                    currentUid: user?.uid,
-                    friendUids,
-                });
-
-                setEvents(result.events.filter((e) =>
-                    e.locationGeo && e.locationGeo.latitude != null && e.locationGeo.longitude != null
-                ));
-            } catch (err) {
-                captureException(err, { flow: 'mapLoadEventsWeb' });
-            } finally {
-                setLoading(false);
-            }
-        };
-        loadEvents();
-    }, [user]);
+            };
+            loadEvents();
+        }, [user])
+    );
 
     if (!mapComponentsLoaded) {
         return (

@@ -474,20 +474,22 @@ export async function fetchEventsFeed(options: {
             ))
             : Promise.resolve(null);
 
-        // Query C: friends-only events from friends (chunked)
-        const friendChunks = currentUid ? chunkArray(friendUids.slice(0, 100), 10) : [];
-        const friendPromises = friendChunks
-            .filter(chunk => chunk.length > 0)
-            .map(chunk =>
+        // Query C: friends-only events from friends (one query per friend to satisfy Firestore static evaluation of exists())
+        const friendPromises = currentUid
+            ? friendUids.slice(0, 100).map(friendUid =>
                 getDocs(query(
                     ref,
                     where('visibility', '==', 'friends'),
-                    where('createdBy', 'in', chunk),
+                    where('createdBy', '==', friendUid),
                     ...categoryConstraints,
                     orderBy('createdAt', 'desc'),
                     limit(pageSize),
-                )),
-            );
+                )).catch(err => {
+                    // Fail gracefully for individual friend queries just in case
+                    return null;
+                })
+            )
+            : [];
 
         const [publicSnap, ownSnap, ...friendSnaps] = await Promise.all([
             getDocs(publicQ),
@@ -694,6 +696,18 @@ export async function createEvent(
         return docRef.id;
     } catch (error) {
         await logFirestoreError(error, { screen: 'posting', operation: 'createEvent', uid: data.createdBy });
+        throw error;
+    }
+}
+
+export async function deleteEvent(eventId: string, uid: string): Promise<void> {
+    const startMs = Date.now();
+    try {
+        const ref = doc(db, 'connectEvents', eventId);
+        await deleteDoc(ref);
+        await logEvent('event_deleted', { latencyMs: Date.now() - startMs, eventId, uid });
+    } catch (error) {
+        await logFirestoreError(error, { screen: 'event', operation: 'deleteEvent', uid });
         throw error;
     }
 }

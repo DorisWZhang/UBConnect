@@ -11,7 +11,7 @@ import { Comment as EventComment } from '@/components/models/Comment';
 import {
     fetchEventById, fetchTopLevelComments, fetchReplies,
     addEventComment, rsvpToEvent, removeRsvp,
-    fetchRsvpStatus, fetchRsvpCount, isPermissionDenied,
+    fetchRsvpStatus, fetchRsvpCount, isPermissionDenied, deleteEvent
 } from '@/src/services/social';
 import { createNotification } from '@/src/services/notifications';
 import { ConnectEvent } from '@/components/models/ConnectEvent';
@@ -225,6 +225,34 @@ export default function EventDetailScreen() {
                     </View>
                 ) : null}
 
+                {user && event.createdBy === user.uid && (
+                    <TouchableOpacity
+                        style={styles.deleteButton}
+                        onPress={() => {
+                            Alert.alert(
+                                'Delete Event',
+                                'Are you sure you want to delete this event? This action cannot be undone.',
+                                [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    {
+                                        text: 'Delete', style: 'destructive', onPress: async () => {
+                                            try {
+                                                await deleteEvent(eventId, user.uid);
+                                                router.back();
+                                            } catch (err) {
+                                                Alert.alert('Error', 'Failed to delete event.');
+                                            }
+                                        }
+                                    }
+                                ]
+                            );
+                        }}
+                    >
+                        <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                        <Text style={styles.deleteButtonText}>Delete Event</Text>
+                    </TouchableOpacity>
+                )}
+
                 <Text style={styles.eventDescription}>{event.description}</Text>
 
                 {event.startTime && (
@@ -390,6 +418,12 @@ const styles = StyleSheet.create({
         paddingVertical: 3, alignSelf: 'flex-start', marginBottom: 10,
     },
     categoryBadgeText: { color: '#fff', fontSize: 12 },
+    deleteButton: {
+        flexDirection: 'row', alignItems: 'center', backgroundColor: '#fee2e2',
+        paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
+        alignSelf: 'flex-start', marginBottom: 16,
+    },
+    deleteButtonText: { color: '#ef4444', fontSize: 13, fontWeight: '600', marginLeft: 4 },
     infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
     infoText: { fontSize: 14, color: '#666', marginLeft: 6 },
     hostRow: {

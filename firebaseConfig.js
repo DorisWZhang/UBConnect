@@ -64,4 +64,5 @@ if (Platform.OS === 'web') {
 
 export const auth = authInstance;
 export const db = getFirestore(app);
+
 export default app;

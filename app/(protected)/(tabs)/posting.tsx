@@ -5,6 +5,7 @@ import {
   TouchableOpacity, Alert, ActivityIndicator, Platform,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 
 // Conditionally import DateTimePicker to avoid Web crashes
 let DateTimePicker: any = null;
@@ -36,6 +37,8 @@ export default function PostingPage() {
   const [categoryId, setCategoryId] = useState('');
   const [visibility, setVisibility] = useState<'public' | 'friends'>('public');
   const [locationName, setLocationName] = useState('');
+  const [placeId, setPlaceId] = useState('');
+  const [locationGeo, setLocationGeo] = useState<{ latitude: number, longitude: number } | null>(null);
   const [capacity, setCapacity] = useState('');
 
   // Date/Time
@@ -78,8 +81,8 @@ export default function PostingPage() {
         categoryId,
         visibility,
         locationName: locationName.trim(),
-        placeId: '', // no Google Places integration yet
-        locationGeo: null, // will be populated when Places API is added
+        placeId,
+        locationGeo,
         startTime: startDate,
         endTime: endDate,
         capacity: capacity ? Number(capacity) : null,
@@ -98,6 +101,8 @@ export default function PostingPage() {
       setDescription('');
       setCategoryId('');
       setLocationName('');
+      setPlaceId('');
+      setLocationGeo(null);
       setCapacity('');
     } catch (err) {
       if (isPermissionDenied(err)) {
@@ -118,7 +123,7 @@ export default function PostingPage() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <Text style={styles.pageTitle}>Create Event</Text>
 
       {/* Title */}
@@ -185,13 +190,57 @@ export default function PostingPage() {
 
       {/* Location */}
       <Text style={styles.label}>Location</Text>
-      <TextInput
-        style={styles.input}
-        value={locationName}
-        onChangeText={setLocationName}
+      <GooglePlacesAutocomplete
         placeholder="Where is this event?"
-        maxLength={120}
-        placeholderTextColor="#aaa"
+        disableScroll={true}
+        onPress={(data, details = null) => {
+          if (details) {
+            setLocationName(data.description);
+            setPlaceId(data.place_id || '');
+            if (details.geometry?.location) {
+              setLocationGeo({
+                latitude: details.geometry.location.lat,
+                longitude: details.geometry.location.lng,
+              });
+            }
+          }
+        }}
+        query={{
+          key: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+          language: 'en',
+        }}
+        fetchDetails={true}
+        styles={{
+          textInputContainer: {
+            width: '100%',
+          },
+          textInput: {
+            backgroundColor: '#f5f5f5',
+            borderRadius: 10,
+            paddingHorizontal: 12,
+            height: 44, // Match other inputs roughly
+            fontSize: 15,
+            color: '#333',
+          },
+          predefinedPlacesDescription: {
+            color: '#1faadb',
+          },
+          listView: {
+            backgroundColor: '#fff',
+            borderRadius: 10,
+            borderWidth: 1,
+            borderColor: '#eee',
+            marginTop: 5,
+            elevation: 3,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+          },
+        }}
+        textInputProps={{
+          placeholderTextColor: '#aaa',
+        }}
       />
 
       {/* Start / End Time */}

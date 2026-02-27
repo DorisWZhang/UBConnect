@@ -5,7 +5,7 @@ import {
     ActivityIndicator, Alert,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/src/auth/AuthContext';
 import { UserProfile } from '@/components/models/UserProfile';
 import { FriendRequest } from '@/components/models/FriendRequest';
@@ -108,10 +108,12 @@ export default function FriendsPage() {
         }
     }, [user]);
 
-    useEffect(() => {
-        loadFriends();
-        loadRequests();
-    }, [loadFriends, loadRequests]);
+    useFocusEffect(
+        useCallback(() => {
+            loadFriends();
+            loadRequests();
+        }, [loadFriends, loadRequests])
+    );
 
     const handleAccept = async (req: FriendRequest) => {
         if (!user) return;
@@ -168,12 +170,28 @@ export default function FriendsPage() {
 
     const handleAddFriend = async (targetUid: string) => {
         if (!user) return;
+
+        // Optimistically update the UI so the button changes to a 'sent' icon instantly
+        setOutgoing((prev) => [
+            ...prev,
+            {
+                id: `temp_${Date.now()}`,
+                fromUid: user.uid,
+                toUid: targetUid,
+                status: 'pending',
+                createdAt: new Date(),
+                _type: 'outgoing'
+            } as unknown as PopulatedFriendRequest,
+        ]);
+
         try {
             // sendFriendRequest now creates the notification internally
             await sendFriendRequest(user.uid, targetUid, user.displayName || undefined);
             Alert.alert('Sent!', 'Friend request sent.');
             loadRequests();
         } catch (err: any) {
+            // Revert optimistic update on failure
+            setOutgoing((prev) => prev.filter(req => req.id !== `temp_${Date.now()}` && req.toUid !== targetUid));
             if (isPermissionDenied(err)) {
                 Alert.alert('Permission Denied', 'Could not send request. This user may not exist, or a request may already exist.');
             } else {
@@ -327,9 +345,13 @@ export default function FriendsPage() {
                             ) : null
                         }
                         renderItem={({ item }) => {
-                            const isFriend = friends.some((f) => f.friendUid === item.uid);
-                            const hasOutgoing = outgoing.some((r) => r.toUid === item.uid);
-                            const hasIncoming = incoming.some((r) => r.fromUid === item.uid);
+                            const isFriendFromList = friends.some((f) => f.friendUid === item.uid);
+                            const hasAcceptedIncoming = incoming.some((r) => r.fromUid === item.uid && r.status === 'accepted');
+                            const hasAcceptedOutgoing = outgoing.some((r) => r.toUid === item.uid && r.status === 'accepted');
+                            const isFriend = isFriendFromList || hasAcceptedIncoming || hasAcceptedOutgoing;
+
+                            const hasOutgoing = outgoing.some((r) => r.toUid === item.uid && r.status !== 'accepted');
+                            const hasIncoming = incoming.some((r) => r.fromUid === item.uid && r.status !== 'accepted');
 
                             return (
                                 <TouchableOpacity

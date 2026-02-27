@@ -5,7 +5,7 @@ import {
   ActivityIndicator, Alert,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/src/auth/AuthContext';
 import { useProfile } from '@/app/ProfileContext';
 import { ConnectEvent } from '@/components/models/ConnectEvent';
@@ -91,7 +91,11 @@ export default function ExplorePage() {
     }
   }, [categoryFilter, interests, user, friendUids]);
 
-  useEffect(() => { loadFeed(); }, [loadFeed]);
+  useFocusEffect(
+    useCallback(() => {
+      loadFeed();
+    }, [loadFeed])
+  );
 
   const handleLoadMore = async () => {
     if (!hasMore || loadingMore) return;

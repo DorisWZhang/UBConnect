@@ -77,7 +77,7 @@ export default function SignupScreen() {
                 value={password}
                 onChangeText={(t) => { setPassword(t); clearNotice(); }}
                 secureTextEntry
-                textContentType="password"
+                textContentType="none"
             />
             <TextInput
                 style={styles.input}
@@ -86,7 +86,7 @@ export default function SignupScreen() {
                 value={confirm}
                 onChangeText={(t) => { setConfirm(t); clearNotice(); }}
                 secureTextEntry
-                textContentType="newPassword"
+                textContentType="none"
             />
 
             <TouchableOpacity
