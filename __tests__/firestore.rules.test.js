@@ -651,6 +651,28 @@ describe('Notifications', () => {
             createdAt: new Date(),
         }));
     });
+
+    test('recipient can delete their own notification', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('users').doc('bob').collection('notifications').doc('n1').set({
+                type: 'friend_request', actorUid: 'alice', targetUid: 'bob', createdAt: new Date()
+            });
+        });
+        const db = testEnv.authenticatedContext('bob', verifiedUbcAuth('bob')).firestore();
+        await assertSucceeds(db.collection('users').doc('bob').collection('notifications').doc('n1').delete());
+    });
+
+    test('non-recipient cannot delete someone else\'s notification', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const admin = ctx.firestore();
+            await admin.collection('users').doc('bob').collection('notifications').doc('n1').set({
+                type: 'friend_request', actorUid: 'alice', targetUid: 'bob', createdAt: new Date()
+            });
+        });
+        const db = testEnv.authenticatedContext('alice', verifiedUbcAuth('alice')).firestore();
+        await assertFails(db.collection('users').doc('bob').collection('notifications').doc('n1').delete());
+    });
 });
 
 // ================================================================

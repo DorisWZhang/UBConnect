@@ -120,7 +120,7 @@ service cloud.firestore {
                          ])
                       && request.resource.data.type in ['friend_request', 'event_live', 'comment', 'reply'];
 
-        allow delete: if false;
+        allow delete: if isAuthorized() && isOwner(uid);
       }
     }
 

@@ -18,9 +18,18 @@ import InlineNotice from '@/components/InlineNotice';
 import { captureException } from '@/src/telemetry';
 
 const CATEGORIES = [
-  'All', 'Sports', 'Esports', 'Music', 'Arts', 'Food',
-  'Academic', 'Social', 'Volunteering', 'Outdoors', 'Fitness',
-];
+  { id: 'All', icon: 'grid-outline' },
+  { id: 'Sports', icon: 'football-outline' },
+  { id: 'Esports', icon: 'game-controller-outline' },
+  { id: 'Music', icon: 'musical-notes-outline' },
+  { id: 'Arts', icon: 'color-palette-outline' },
+  { id: 'Food', icon: 'restaurant-outline' },
+  { id: 'Academic', icon: 'school-outline' },
+  { id: 'Social', icon: 'people-outline' },
+  { id: 'Volunteering', icon: 'heart-outline' },
+  { id: 'Outdoors', icon: 'leaf-outline' },
+  { id: 'Fitness', icon: 'barbell-outline' },
+] as const;
 
 export default function ExplorePage() {
   const router = useRouter();
@@ -205,16 +214,21 @@ export default function ExplorePage() {
       <FlatList
         horizontal
         data={CATEGORIES}
-        keyExtractor={(item) => item}
+        keyExtractor={(item) => item.id}
         showsHorizontalScrollIndicator={false}
         style={styles.categoryBar}
         renderItem={({ item }) => (
           <TouchableOpacity
-            style={[styles.catChip, categoryFilter === item && styles.catChipActive]}
-            onPress={() => setCategoryFilter(item)}
+            style={[styles.catChip, categoryFilter === item.id && styles.catChipActive]}
+            onPress={() => setCategoryFilter(item.id)}
           >
-            <Text style={[styles.catChipText, categoryFilter === item && styles.catChipTextActive]}>
-              {item}
+            <Ionicons
+              name={item.icon}
+              size={16}
+              color={categoryFilter === item.id ? '#fff' : '#666'}
+            />
+            <Text style={[styles.catChipText, categoryFilter === item.id && styles.catChipTextActive]}>
+              {item.id}
             </Text>
           </TouchableOpacity>
         )}
@@ -259,13 +273,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 10, fontSize: 15,
   },
   clearBtn: { marginLeft: 8 },
-  categoryBar: { maxHeight: 40, paddingHorizontal: 12, marginBottom: 8 },
+  categoryBar: { maxHeight: 50, marginBottom: 12 },
   catChip: {
-    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16,
-    backgroundColor: '#f0f0f0', marginHorizontal: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#eee',
+    borderRadius: 20,
+    marginRight: 10,
   },
   catChipActive: { backgroundColor: '#866FD8' },
-  catChipText: { fontSize: 13, color: '#666' },
+  catChipText: { fontSize: 14, color: '#666', fontWeight: '500' },
   catChipTextActive: { color: '#fff', fontWeight: '600' },
   eventCard: {
     marginHorizontal: 16, marginBottom: 12, backgroundColor: '#fafafa',

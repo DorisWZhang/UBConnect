@@ -5,7 +5,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/src/auth/AuthContext';
 import { Notification } from '@/components/models/Notification';
-import { fetchNotifications, markNotificationRead } from '@/src/services/notifications';
+import { fetchNotifications, markNotificationRead, deleteNotifications } from '@/src/services/notifications';
 import { captureException } from '@/src/telemetry';
 
 export default function NotificationsPage() {
@@ -13,6 +13,9 @@ export default function NotificationsPage() {
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) { setLoading(false); return; }
@@ -41,6 +44,30 @@ export default function NotificationsPage() {
       router.push(`/profile/${n.actorUid}`);
     } else if (n.eventId) {
       router.push(`/event/${n.eventId}`);
+    }
+  };
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleDeleteSelected = async () => {
+    if (!user || selectedIds.size === 0) return;
+    setDeleting(true);
+    try {
+      await deleteNotifications(user.uid, Array.from(selectedIds));
+      setSelectedIds(new Set());
+      setIsEditing(false);
+      load(); // Refresh feed
+    } catch {
+      // Silently fail or use existing error boundaries
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -86,7 +113,20 @@ export default function NotificationsPage() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Notifications</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.header}>Notifications</Text>
+        {notifications.length > 0 && (
+          <TouchableOpacity
+            onPress={() => {
+              setIsEditing(!isEditing);
+              setSelectedIds(new Set());
+            }}
+          >
+            <Text style={styles.headerAction}>{isEditing ? 'Cancel' : 'Edit'}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
       {notifications.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons name="notifications-off-outline" size={48} color="#ccc" />
@@ -99,8 +139,21 @@ export default function NotificationsPage() {
           renderItem={({ item }) => (
             <TouchableOpacity
               style={[styles.notifItem, !item.readAt && styles.unreadItem]}
-              onPress={() => handlePress(item)}
+              onPress={() => {
+                if (isEditing) toggleSelection(item.id);
+                else handlePress(item);
+              }}
+              activeOpacity={isEditing ? 0.7 : 0.2}
             >
+              {isEditing && (
+                <View style={styles.selectCircle}>
+                  {selectedIds.has(item.id) ? (
+                    <Ionicons name="checkmark-circle" size={24} color="#ef4444" />
+                  ) : (
+                    <Ionicons name="ellipse-outline" size={24} color="#ccc" />
+                  )}
+                </View>
+              )}
               <View style={[styles.iconCircle, !item.readAt && styles.unreadCircle]}>
                 <Ionicons
                   name={getIcon(item.type) as keyof typeof Ionicons.glyphMap}
@@ -119,13 +172,33 @@ export default function NotificationsPage() {
           )}
         />
       )}
+
+      {isEditing && selectedIds.size > 0 && (
+        <View style={styles.actionBar}>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={handleDeleteSelected}
+            disabled={deleting}
+          >
+            {deleting ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.deleteButtonText}>
+                Delete Selected ({selectedIds.size})
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff', paddingTop: 60 },
-  header: { fontSize: 24, fontWeight: '700', paddingHorizontal: 16, marginBottom: 16 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 16 },
+  header: { fontSize: 24, fontWeight: '700' },
+  headerAction: { fontSize: 16, color: '#866FD8', fontWeight: '600' },
   notifItem: {
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16,
     paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
@@ -142,6 +215,16 @@ const styles = StyleSheet.create({
   unreadDot: {
     width: 8, height: 8, borderRadius: 4, backgroundColor: '#866FD8', marginLeft: 8,
   },
+  selectCircle: { marginRight: 12, justifyContent: 'center', alignItems: 'center' },
   emptyState: { alignItems: 'center', marginTop: 80 },
   emptyText: { color: '#999', fontSize: 16, marginTop: 12 },
+  actionBar: {
+    padding: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#f0f0f0',
+    paddingBottom: 32, // Safe area padding
+  },
+  deleteButton: {
+    backgroundColor: '#ef4444', borderRadius: 24, paddingVertical: 14,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  deleteButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });

@@ -4,6 +4,7 @@ import {
     addDoc,
     getDocs,
     updateDoc,
+    deleteDoc,
     collection,
     query,
     orderBy,
@@ -119,5 +120,27 @@ export async function markNotificationRead(
             uid,
         });
         // Non-critical
+    }
+}
+
+// ================================================================
+// Delete notifications
+// ================================================================
+
+export async function deleteNotifications(
+    uid: string,
+    notificationIds: string[],
+): Promise<void> {
+    try {
+        await Promise.all(
+            notificationIds.map((id) => deleteDoc(doc(db, 'users', uid, 'notifications', id)))
+        );
+    } catch (error) {
+        await logFirestoreError(error, {
+            screen: 'notifications',
+            operation: 'deleteNotifications',
+            uid,
+        });
+        throw error;
     }
 }
