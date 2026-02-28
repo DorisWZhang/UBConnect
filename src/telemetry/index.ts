@@ -11,6 +11,7 @@ async function getSentry() {
         return false;
     }
     try {
+        // @ts-ignore
         const mod = await import('@sentry/react-native');
         mod.init({ dsn: SENTRY_DSN });
         Sentry = mod;

@@ -121,7 +121,7 @@ jest.mock('expo-font', () => ({
 }));
 
 // Mock ProfileContext for profile-dependent screens
-jest.mock('../../app/ProfileContext', () => ({
+jest.mock('../../contexts/ProfileContext', () => ({
     useProfile: () => ({
         name: 'Test User',
         interests: ['Hiking'],

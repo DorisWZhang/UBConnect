@@ -3,7 +3,7 @@ import React from 'react';
 import { Stack, Redirect } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '@/src/auth/AuthContext';
-import { ProfileProvider } from '@/app/ProfileContext';
+import { ProfileProvider } from '@/contexts/ProfileContext';
 
 export default function ProtectedLayout() {
     const { user, loading } = useAuth();

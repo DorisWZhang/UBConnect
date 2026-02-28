@@ -7,7 +7,7 @@ import {
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/src/auth/AuthContext';
-import { useProfile } from '@/app/ProfileContext';
+import { useProfile } from '@/contexts/ProfileContext';
 import { ConnectEvent } from '@/components/models/ConnectEvent';
 import {
   fetchEventsFeed, fetchInterestsFeed, searchEvents,

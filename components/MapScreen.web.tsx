@@ -38,6 +38,7 @@ export default function MapScreenWeb() {
 
             Promise.all([
                 import('react-leaflet'),
+                // @ts-ignore
                 import('leaflet')
             ]).then(([reactLeaflet, leaflet]) => {
                 const L = leaflet.default || leaflet;

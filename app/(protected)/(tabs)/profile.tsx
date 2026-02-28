@@ -6,7 +6,7 @@ import { ThemedView } from '@/components/ThemedView';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/src/auth/AuthContext';
-import { useProfile } from '@/app/ProfileContext';
+import { useProfile } from '@/contexts/ProfileContext';
 import { ConnectEvent } from '@/components/models/ConnectEvent';
 import {
   listFriends, FriendEdge, fetchEventsByCreator,
@@ -111,7 +111,7 @@ export default function ProfilePage() {
 
         {/* Stats */}
         <View style={styles.statsRow}>
-          <TouchableOpacity style={styles.statBox} onPress={() => router.push('/(tabs)/friends')}>
+          <TouchableOpacity style={styles.statBox} onPress={() => router.push('/(protected)/(tabs)/friends')}>
             <ThemedText style={styles.statNumber}>{friends.length}</ThemedText>
             <ThemedText style={styles.statLabel}>Friends</ThemedText>
           </TouchableOpacity>
@@ -187,7 +187,7 @@ export default function ProfilePage() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <ThemedText style={styles.sectionTitle}>Friends</ThemedText>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/friends')}>
+            <TouchableOpacity onPress={() => router.push('/(protected)/(tabs)/friends')}>
               <ThemedText style={{ color: '#866FD8', fontSize: 14 }}>See All</ThemedText>
             </TouchableOpacity>
           </View>
@@ -211,7 +211,7 @@ export default function ProfilePage() {
               {friends.length > 5 && (
                 <TouchableOpacity
                   style={[styles.friendAvatar, { backgroundColor: '#eee' }]}
-                  onPress={() => router.push('/(tabs)/friends')}
+                  onPress={() => router.push('/(protected)/(tabs)/friends')}
                 >
                   <ThemedText style={{ color: '#666', fontSize: 12 }}>
                     +{friends.length - 5}

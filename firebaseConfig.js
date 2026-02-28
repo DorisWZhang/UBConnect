@@ -39,25 +39,23 @@ const firebaseConfig = {
   measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
+import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
+
 // ---------------------------------------------------------------------------
 // Single initialization — one app, one auth, one db
 // ---------------------------------------------------------------------------
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
-// Auth with persistence: native uses AsyncStorage, web uses default
 let authInstance;
 if (Platform.OS === 'web') {
-  const { getAuth } = require('firebase/auth');
   authInstance = getAuth(app);
 } else {
-  const { initializeAuth, getReactNativePersistence } = require('firebase/auth');
   try {
     authInstance = initializeAuth(app, {
       persistence: getReactNativePersistence(AsyncStorage),
     });
   } catch (e) {
-    // If auth already initialised (hot reload), fall back to getAuth
-    const { getAuth } = require('firebase/auth');
+    // If auth is already initialized due to Fast Refresh, fallback
     authInstance = getAuth(app);
   }
 }

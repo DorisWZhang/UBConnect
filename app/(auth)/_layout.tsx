@@ -17,7 +17,7 @@ export default function AuthLayout() {
 
     // Redirect fully authenticated users away from auth screens
     if (user && user.emailVerified) {
-        return <Redirect href="/(tabs)/explore" />;
+        return <Redirect href="/(protected)/(tabs)/explore" />;
     }
 
     return (

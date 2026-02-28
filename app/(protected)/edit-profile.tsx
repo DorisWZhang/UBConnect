@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
-import { useProfile } from '@/app/ProfileContext';
+import { useProfile } from '@/contexts/ProfileContext';
 import { logEvent } from '@/src/telemetry';
 import InlineNotice from '@/components/InlineNotice';
 

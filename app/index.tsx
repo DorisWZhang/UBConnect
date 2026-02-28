@@ -26,5 +26,5 @@ export default function Index() {
   }
 
   // Fully authenticated → explore
-  return <Redirect href="/(tabs)/explore" />;
+  return <Redirect href="/(protected)/(tabs)/explore" />;
 }

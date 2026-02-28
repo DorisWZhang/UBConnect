@@ -38,7 +38,7 @@ export default function VerifyEmailScreen() {
             await user.getIdToken(true);
             if (user.emailVerified) {
                 await logEvent('email_verified');
-                router.replace('/(tabs)/explore');
+                router.replace('/(protected)/(tabs)/explore');
             } else {
                 setNotice({
                     message: 'Your email is not verified yet. Please check your inbox and click the verification link.',

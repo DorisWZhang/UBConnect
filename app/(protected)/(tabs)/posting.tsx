@@ -15,7 +15,7 @@ if (Platform.OS !== 'web') {
 
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/src/auth/AuthContext';
-import { useProfile } from '@/app/ProfileContext';
+import { useProfile } from '@/contexts/ProfileContext';
 import { validateEvent } from '@/components/models/ConnectEvent';
 import { createEvent, isPermissionDenied } from '@/src/services/social';
 import { logEvent } from '@/src/telemetry';
@@ -93,7 +93,7 @@ export default function PostingPage() {
       await logEvent('event_created', { eventId, categoryId });
       Alert.alert('Success!', 'Your event has been posted.', [
         { text: 'View Event', onPress: () => router.push(`/event/${eventId}`) },
-        { text: 'OK', onPress: () => router.push('/(tabs)/explore') },
+        { text: 'OK', onPress: () => router.push('/(protected)/(tabs)/explore') },
       ]);
 
       // Reset form
@@ -193,7 +193,13 @@ export default function PostingPage() {
       <GooglePlacesAutocomplete
         placeholder="Where is this event?"
         disableScroll={true}
-        onPress={(data, details = null) => {
+        debounce={400}
+        onFail={(error: any) => {
+          if (error !== 'request could not be completed or has been aborted') {
+            console.warn('GooglePlacesAutocomplete error:', error);
+          }
+        }}
+        onPress={(data: any, details: any = null) => {
           if (details) {
             setLocationName(data.description);
             setPlaceId(data.place_id || '');
