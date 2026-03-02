@@ -126,4 +126,4 @@ After pulling these changes, deploy rules **and** indexes together:
 firebase deploy --only firestore:rules,firestore:indexes
 ```
 This ensures composite indexes required by hosted-events and attending-events queries are created.
-If a query fails with a `failed-precondition` error in the console, the app will show a friendly banner directing you to create the missing index. 
+If a query fails with a `failed-precondition` error in the console, the app will show a friendly banner directing you to create the missing index.
