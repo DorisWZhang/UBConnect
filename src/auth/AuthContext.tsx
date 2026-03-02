@@ -11,11 +11,7 @@ import {
 import { AppState, AppStateStatus } from 'react-native';
 import { auth } from '../../firebaseConfig';
 import { captureException, logEvent } from '../telemetry';
-
-// ---------------------------------------------------------------------------
-// Allowed email domains
-// ---------------------------------------------------------------------------
-const ALLOWED_DOMAINS = ['student.ubc.ca', 'ubc.ca'];
+import { ALLOWED_DOMAINS } from './firebaseErrorMap';
 
 function isAllowedEmail(email: string): boolean {
     const domain = email.split('@')[1]?.toLowerCase();

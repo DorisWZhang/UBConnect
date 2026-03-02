@@ -51,7 +51,7 @@ export default function ChangePasswordScreen() {
             await reauthenticateWithCredential(user, credential);
         } catch (err: any) {
             captureException(err, { flow: 'change_password_reauth' });
-            await logEvent('AUTH_CHANGE_PASSWORD_REAUTH_FAIL');
+            await logEvent('auth_change_password_reauth_fail');
             setNotice({ message: 'Incorrect current password. Please try again.', type: 'error' });
             setLoading(false);
             return;
@@ -59,7 +59,7 @@ export default function ChangePasswordScreen() {
 
         try {
             await updatePassword(user, newPassword);
-            await logEvent('AUTH_CHANGE_PASSWORD_SUCCESS');
+            await logEvent('auth_change_password_success');
             setNotice({ message: 'Password updated successfully!', type: 'success' });
             setTimeout(() => router.back(), 2000);
         } catch (err: any) {

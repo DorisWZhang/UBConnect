@@ -36,7 +36,7 @@ export default function ForgotPasswordScreen() {
         setLoading(true);
         try {
             await sendPasswordResetEmail(auth, email.trim());
-            await logEvent('AUTH_FORGOT_PASSWORD_SENT', { email: email.trim() });
+            await logEvent('auth_forgot_password_sent');
             setSent(true);
         } catch (err: any) {
             captureException(err, { flow: 'forgot_password', email: email.trim() });
