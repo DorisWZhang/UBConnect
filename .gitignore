@@ -37,3 +37,11 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+CLAUDE.md
+.claude/MEMORY.md
+.gitignore
+.claude/settings.json
+.claude/SKILL.md
+docs/plans/2026-03-02-reset-password-design.md
+.claude/settings.local.json
+.mcp.json
