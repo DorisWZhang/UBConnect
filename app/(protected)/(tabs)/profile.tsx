@@ -103,6 +103,10 @@ export default function ProfilePage() {
               <Ionicons name="create-outline" size={18} color="#fff" />
               <ThemedText style={styles.editBtnText}>Edit Profile</ThemedText>
             </TouchableOpacity>
+            <TouchableOpacity style={styles.editBtn} onPress={() => router.push('/(protected)/change-password')}>
+              <Ionicons name="lock-closed-outline" size={18} color="#fff" />
+              <ThemedText style={styles.editBtnText}>Change Password</ThemedText>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
               <Ionicons name="log-out-outline" size={18} color="#e65100" />
             </TouchableOpacity>
