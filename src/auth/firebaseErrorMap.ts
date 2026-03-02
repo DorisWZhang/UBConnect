@@ -12,6 +12,7 @@ const ERROR_MAP: Record<string, string> = {
     'auth/network-request-failed': 'Network error. Check your connection and try again.',
     'auth/user-disabled': 'This account has been disabled.',
     'auth/operation-not-allowed': 'This sign-in method is not enabled.',
+    'auth/requires-recent-login': 'Please log out and log back in before changing your password.',
 };
 
 /**
@@ -29,9 +30,9 @@ export function friendlyAuthError(err: any): string {
 /**
  * Validate signup fields and return the first error found, or null if valid.
  */
-const ALLOWED_DOMAINS = ['student.ubc.ca', 'ubc.ca'];
+export const ALLOWED_DOMAINS = ['student.ubc.ca', 'ubc.ca'];
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function validateSignupFields(
     email: string,
@@ -72,6 +73,43 @@ export function validateLoginFields(email: string, password: string): string | n
     }
     if (!password) {
         return 'Password is required.';
+    }
+    return null;
+}
+
+export function validateForgotPasswordField(email: string): string | null {
+    if (!email.trim()) {
+        return 'Email is required.';
+    }
+    if (!EMAIL_RE.test(email.trim())) {
+        return 'Please enter a valid email address.';
+    }
+    const domain = email.trim().split('@')[1]?.toLowerCase();
+    if (!ALLOWED_DOMAINS.some((d) => domain === d)) {
+        return 'Please use a @student.ubc.ca or @ubc.ca email.';
+    }
+    return null;
+}
+
+export function validateChangePasswordFields(
+    currentPassword: string,
+    newPassword: string,
+    confirmPassword: string,
+): string | null {
+    if (!currentPassword) {
+        return 'Current password is required.';
+    }
+    if (!newPassword) {
+        return 'New password is required.';
+    }
+    if (newPassword.length < 6) {
+        return 'New password must be at least 6 characters.';
+    }
+    if (newPassword === currentPassword) {
+        return 'New password must be different from your current password.';
+    }
+    if (newPassword !== confirmPassword) {
+        return 'New passwords do not match.';
     }
     return null;
 }
