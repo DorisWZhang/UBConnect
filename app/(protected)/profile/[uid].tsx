@@ -13,11 +13,13 @@ import {
     fetchEventsByIds, getFriendStatus, sendFriendRequest,
     cancelFriendRequest, acceptFriendRequest, removeFriend,
     isPermissionDenied, isFailedPrecondition, getFirestoreErrorMessage,
+    getMutualFriends, MutualFriend,
 } from '@/src/services/social';
 import { createNotification } from '@/src/services/notifications';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getAvatarSource } from '@/src/utils/avatarMap';
 import InlineNotice from '@/components/InlineNotice';
+import MutualFriendsModal from '@/components/MutualFriendsModal';
 
 export default function ProfileViewScreen() {
     const { uid } = useLocalSearchParams<{ uid: string }>();
@@ -33,6 +35,8 @@ export default function ProfileViewScreen() {
     const [actionLoading, setActionLoading] = useState(false);
     const [hostedError, setHostedError] = useState<string | null>(null);
     const [attendingError, setAttendingError] = useState<string | null>(null);
+    const [mutualFriends, setMutualFriends] = useState<MutualFriend[]>([]);
+    const [mutualModalVisible, setMutualModalVisible] = useState(false);
 
     useEffect(() => {
         const load = async () => {
@@ -71,6 +75,13 @@ export default function ProfileViewScreen() {
                 if (user && !isSelf) {
                     const status = await getFriendStatus(user.uid, uid);
                     setFriendStatus(status);
+                }
+            } catch (err) { }
+
+            try {
+                if (user && !isSelf) {
+                    const mutual = await getMutualFriends(user.uid, uid);
+                    setMutualFriends(mutual);
                 }
             } catch (err) { }
 
@@ -129,6 +140,14 @@ export default function ProfileViewScreen() {
             case 'pending_received': return 'Accept Request';
             default: return '+ Add Friend';
         }
+    };
+
+    const mutualFriendsText = () => {
+        if (mutualFriends.length === 0) return '';
+        const names = mutualFriends.map((f) => f.displayName);
+        if (names.length === 1) return `Friends with ${names[0]}`;
+        if (names.length === 2) return `Friends with ${names[0]} and ${names[1]}`;
+        return `Friends with ${names[0]}, ${names[1]}, and ${names.length - 2} other${names.length - 2 > 1 ? 's' : ''}`;
     };
 
     if (loading) {
@@ -196,6 +215,15 @@ export default function ProfileViewScreen() {
                             <ThemedText style={styles.friendButtonText}>{friendButtonLabel()}</ThemedText>
                         </TouchableOpacity>
                     )}
+                    {!isSelf && mutualFriends.length > 0 && (
+                        <TouchableOpacity
+                            style={styles.mutualRow}
+                            onPress={() => setMutualModalVisible(true)}
+                        >
+                            <Ionicons name="people-outline" size={14} color="#866FD8" />
+                            <ThemedText style={styles.mutualText}>{mutualFriendsText()}</ThemedText>
+                        </TouchableOpacity>
+                    )}
                 </View>
 
                 {/* Interests */}
@@ -258,6 +286,11 @@ export default function ProfileViewScreen() {
                     )}
                 </View>
             </ScrollView>
+            <MutualFriendsModal
+                visible={mutualModalVisible}
+                friends={mutualFriends}
+                onClose={() => setMutualModalVisible(false)}
+            />
         </View>
     );
 }
@@ -309,4 +342,8 @@ const styles = StyleSheet.create({
         marginTop: 16, backgroundColor: '#866FD8', paddingHorizontal: 24,
         paddingVertical: 10, borderRadius: 20,
     },
+    mutualRow: {
+        flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 6,
+    },
+    mutualText: { fontSize: 13, color: '#866FD8' },
 });
