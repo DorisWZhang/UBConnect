@@ -3,7 +3,7 @@ import {
     TouchableOpacity, Text, StyleSheet, ActivityIndicator,
     type ViewStyle, type TextStyle,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fonts, fontSizes, radius, spacing } from '@/src/theme';
 
 interface GradientButtonProps {
