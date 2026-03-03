@@ -1,16 +1,15 @@
 # UBConnect
 
-**Tagline:** Bringing UBC Together, One Activity at a Time!
+**Bringing UBC Together, One Activity at a Time!**
 
-## Overview
-UBConnect is a social app designed exclusively for UBC students to connect and collaborate. Whether you're looking for study buddies, intramural teammates, or people to explore Vancouver with, UBConnect makes it easy to post activities and find like-minded peers to join you. Create or browse posts for everything from group hikes to movie nights, and build meaningful connections on and off campus. With UBConnect, you'll never have to do anything alone-unless you want to!
+UBConnect is a social app for UBC students to discover campus events, connect with peers, and build community. Post activities, find like-minded people, and never miss what's happening on campus.
 
 ---
 
 ## Getting Started
 
 ### Prerequisites
-- **Node.js** ≥ 18 and **npm**
+- **Node.js** >= 18 and **npm**
 - **Expo CLI** (`npx expo`)
 - A Firebase project with Firestore and Authentication enabled
 
@@ -19,7 +18,7 @@ UBConnect is a social app designed exclusively for UBC students to connect and c
    ```bash
    cp .env.example .env
    ```
-2. Fill in your Firebase project values in `.env` (from the Firebase console → Project Settings → General → Your apps):
+2. Fill in your Firebase project values in `.env` (from Firebase console > Project Settings > Your apps):
    - `EXPO_PUBLIC_FIREBASE_API_KEY`
    - `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`
    - `EXPO_PUBLIC_FIREBASE_PROJECT_ID`
@@ -41,89 +40,128 @@ UBConnect is a social app designed exclusively for UBC students to connect and c
 
 ### Running Tests
 ```bash
-# All unit tests
-npm test
-
-# Firestore rules tests (requires Firebase emulator)
-npm run test:rules
+npm test                # All unit tests
+npm run test:rules      # Firestore rules tests (requires Firebase emulator)
 ```
 
 ---
 
 ## Features
 
-### Core Features
-- **UBC Student Verification:** Register with your UBC email (`@student.ubc.ca` or `@ubc.ca`) to ensure the app remains exclusive to UBC students.
-- **Email Verification:** Firebase email verification gating for posting events.
-- **Post Activities:** Share activities with details like time, location, description, category, and visibility.
-- **Explore Events:** Browse and search activities posted by other UBC students.
-- **Map Integration:** See event locations on an interactive native map.
-- **Privacy Controls:** Share posts as public or friends-only.
-- **Profiles:** View and edit your profile, including interests.
-- **Comments:** Interact with event posts through comments.
+### Authentication
+- **UBC-only registration** — sign up with `@student.ubc.ca` or `@ubc.ca` email
+- **Email verification** — required before posting events
+- **Password reset** — forgot-password flow via Firebase Auth
 
-### Engagement and Recommendations
-- **Activity Categories:** Organize posts into categories based on interests.
-- **Community Feed:** A relaxed, student-focused feed.
+### Events
+- **Create events** — title, description, time, location (Google Places), category, capacity, and visibility (public or friends-only)
+- **11 categories** — Sports, Esports, Music, Arts, Food, Academic, Social, Volunteering, Outdoors, Fitness, Indoor
+- **Explore feed** — browse and search events with category filters
+- **Interest-based ranking** — events matching your interests are boosted to the top of the feed
+- **Event detail & comments** — view full event info and interact via comments
+- **Map view** — see event locations on an interactive map
 
-### Enhanced User Experience
-- **Explore Page:** Discover trending or recommended activities.
-- **Map View:** See UBC campus event locations on a native map.
+### Social
+- **Friend system** — send/accept friend requests with bidirectional connections
+- **Mutual friends** — see shared connections when viewing other profiles
+- **Friends-only events** — create events visible only to your friends
+- **Notifications** — friend requests and activity updates
+
+### Profiles
+- **Avatar picker** — choose from 60 bundled DiceBear avatars (Adventurer and Notionists styles)
+- **Interests** — select from 41 interests to personalize your feed
+- **Bio, program, and year** — share your academic info
+- **View other profiles** — see other students' events and mutual friends
 
 ---
 
 ## Tech Stack
 
-### Front-End
-- **Framework:** React Native (Expo / Expo Router)
-- **Purpose:** Provides a seamless and intuitive mobile user interface.
-
-### Back-End
-- **Platform:** Firebase
-  - **Authentication:** Secure, UBC email-verified registration.
-  - **Database (Firestore):** Manages events, user data, and metadata.
-  - **Security Rules:** Server-side validation for data integrity.
+| Layer | Technology |
+|---|---|
+| Framework | React Native + Expo (managed workflow) |
+| Language | TypeScript (strict) |
+| Routing | Expo Router (file-based) |
+| Backend | Firebase (Firestore, Auth, Crashlytics) |
+| Maps | react-native-maps + Google Places |
+| Testing | Jest |
+| Build | EAS Build |
 
 ---
 
 ## Project Structure
 ```
-├── app/
-│   ├── _layout.tsx          # Root layout with AuthProvider
-│   ├── landing.tsx          # Landing page (login/signup)
-│   ├── (auth)/              # Auth screens
-│   │   ├── login.tsx
-│   │   └── signup.tsx
-│   ├── (tabs)/              # Main app tabs
-│   │   ├── explore.tsx      # Browse events
-│   │   ├── posting.tsx      # Create events
-│   │   ├── map.tsx          # Native map view
-│   │   ├── profile.tsx      # User profile
-│   │   └── notifications.tsx
-│   └── edit-profile.tsx
-├── components/models/
-│   └── ConnectEvent.tsx     # Schema, validation, mapping
-├── src/
-│   ├── auth/AuthContext.tsx  # Auth state management
-│   └── telemetry/index.ts   # Monitoring hooks
-├── firebaseConfig.js        # Single Firebase initialization
-├── firestore.rules          # Security rules
-└── firebase.json            # Emulator config
+app/
+  _layout.tsx                    # Root layout with AuthProvider
+  index.tsx                      # Auth gate
+  landing.tsx                    # Landing page
+  (auth)/                        # Auth screens
+    login.tsx
+    signup.tsx
+    forgot-password.tsx
+    verify-email.tsx
+  (protected)/                   # Auth-gated screens
+    (tabs)/                      # Main tab bar
+      explore.tsx                # Event feed with interest ranking
+      posting.tsx                # Create events
+      map.tsx                    # Map view
+      friends.tsx                # Friend list & requests
+      notifications.tsx          # Notifications
+      profile.tsx                # Own profile
+    edit-profile.tsx             # Edit profile & interests
+    change-password.tsx          # Change password
+    event/[eventId].tsx          # Event detail & comments
+    profile/[uid].tsx            # Other user's profile
+components/
+  models/
+    ConnectEvent.tsx             # Event schema, validation
+    UserProfile.ts               # User profile interface
+  AvatarPickerModal.tsx          # Avatar selection modal
+  MutualFriendsModal.tsx         # Mutual friends bottom sheet
+  InlineNotice.tsx               # Error/success banners
+  MapScreen.native.tsx           # Native map component
+  MapScreen.web.tsx              # Web map fallback
+contexts/
+  ProfileContext.tsx              # Global profile state
+src/
+  auth/AuthContext.tsx            # Auth state management
+  constants/interestMapping.ts   # Interest-to-category mapping
+  services/social.ts             # Firestore service layer
+  services/notifications.ts      # Push notification helpers
+  telemetry/index.ts             # Analytics event tracking
+  utils/avatarMap.ts             # Avatar key-to-image mapping
+firebaseConfig.js                # Firebase initialization
+firestore.rules                  # Firestore security rules
+firestore.indexes.json           # Composite index definitions
+```
+
+---
+
+## Firebase Collections
+```
+users/{uid}
+  displayName, email, program, year, photoURL, interests[], bio
+  /friends/{friendUid}        # Bidirectional friend edges
+  /friendRequests/{id}        # Pending friend requests
+
+connectEvents/{eventId}
+  title, description, categoryId, visibility, capacity,
+  startTime, endTime, createdAt, createdBy,
+  locationName, placeId, locationGeo
+
+comments/{commentId}          # Event comments
 ```
 
 ---
 
 ## Migration Notes
 
-### Legacy Events: Missing `createdBy` / `visibility` Fields
-Events created before Phase 2 may lack `createdBy` or `visibility` fields. The Firestore rules now require these fields on event creation, but existing documents are unaffected. The UI gracefully handles missing `createdBy` by showing "Host info unavailable" instead of a broken profile link.
+### Legacy Events
+Events created before Phase 2 may lack `createdBy` or `visibility` fields. The Firestore rules now require these on creation, but existing documents are unaffected. The UI shows "Host info unavailable" for missing `createdBy`.
 
-**Optional one-time migration:** To backfill legacy events, run a Cloud Function or Admin SDK script that sets `createdBy` to the event's creator UID and `visibility` to `'public'` for any documents missing these fields.
-
-### Firestore Indexes & Rules Deployment
-After pulling these changes, deploy rules **and** indexes together:
+### Deploying Rules & Indexes
+After pulling changes, deploy rules and indexes together:
 ```bash
 firebase deploy --only firestore:rules,firestore:indexes
 ```
-This ensures composite indexes required by hosted-events and attending-events queries are created.
-If a query fails with a `failed-precondition` error in the console, the app will show a friendly banner directing you to create the missing index.
+If a query fails with `failed-precondition`, the app shows a banner directing you to create the missing index.
