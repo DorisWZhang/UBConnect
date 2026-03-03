@@ -317,8 +317,8 @@ const styles = StyleSheet.create({
 
   // Category chips
   categoryBar: {
-    maxHeight: 50,
     marginBottom: spacing.md,
+    flexGrow: 0,
   },
   categoryBarContent: {
     paddingHorizontal: spacing.base,
