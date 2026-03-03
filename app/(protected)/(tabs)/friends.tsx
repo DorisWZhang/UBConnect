@@ -16,6 +16,7 @@ import {
     isPermissionDenied, fetchUserProfile,
 } from '@/src/services/social';
 import { captureException } from '@/src/telemetry';
+import { colors, fonts, fontSizes, spacing, radius } from '@/src/theme';
 
 type Tab = 'friends' | 'requests' | 'search';
 
@@ -255,10 +256,10 @@ export default function FriendsPage() {
             {/* Friends Tab */}
             {tab === 'friends' && (
                 friendsLoading ? (
-                    <ActivityIndicator size="large" color="#866FD8" style={{ marginTop: 40 }} />
+                    <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
                 ) : friends.length === 0 ? (
                     <View style={styles.emptyState}>
-                        <Ionicons name="people-outline" size={48} color="#ccc" />
+                        <Ionicons name="people-outline" size={48} color={colors.textMuted} />
                         <Text style={styles.emptyText}>No friends yet — search and connect!</Text>
                     </View>
                 ) : (
@@ -280,7 +281,7 @@ export default function FriendsPage() {
                                     onPress={() => handleRemoveFriend(item.friendUid)}
                                     style={styles.removeBtn}
                                 >
-                                    <Ionicons name="close-circle-outline" size={22} color="#e65100" />
+                                    <Ionicons name="close-circle-outline" size={22} color={colors.danger} />
                                 </TouchableOpacity>
                             </TouchableOpacity>
                         )}
@@ -291,7 +292,7 @@ export default function FriendsPage() {
             {/* Requests Tab */}
             {tab === 'requests' && (
                 requestsLoading ? (
-                    <ActivityIndicator size="large" color="#866FD8" style={{ marginTop: 40 }} />
+                    <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
                 ) : (
                     <FlatList
                         data={[...incoming, ...outgoing]}
@@ -314,13 +315,13 @@ export default function FriendsPage() {
                                 {item._type === 'incoming' ? (
                                     <View style={{ flexDirection: 'row', gap: 8 }}>
                                         <TouchableOpacity
-                                            style={[styles.actionBtn, { backgroundColor: '#4CAF50' }]}
+                                            style={[styles.actionBtn, { backgroundColor: colors.success }]}
                                             onPress={() => handleAccept(item)}
                                         >
                                             <Text style={styles.actionBtnText}>Accept</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity
-                                            style={[styles.actionBtn, { backgroundColor: '#e65100' }]}
+                                            style={[styles.actionBtn, { backgroundColor: colors.danger }]}
                                             onPress={() => handleReject(item)}
                                         >
                                             <Text style={styles.actionBtnText}>Reject</Text>
@@ -328,7 +329,7 @@ export default function FriendsPage() {
                                     </View>
                                 ) : (
                                     <TouchableOpacity
-                                        style={[styles.actionBtn, { backgroundColor: '#FF9800' }]}
+                                        style={[styles.actionBtn, { backgroundColor: colors.warning }]}
                                         onPress={() => handleCancel(item)}
                                     >
                                         <Text style={styles.actionBtnText}>Cancel</Text>
@@ -348,10 +349,10 @@ export default function FriendsPage() {
                         value={searchQuery}
                         onChangeText={handleSearch}
                         placeholder="Search by name..."
-                        placeholderTextColor="#aaa"
+                        placeholderTextColor={colors.textMuted}
                         autoCapitalize="none"
                     />
-                    {searchLoading && <ActivityIndicator size="small" color="#866FD8" />}
+                    {searchLoading && <ActivityIndicator size="small" color={colors.primary} />}
                     <FlatList
                         data={searchResults}
                         keyExtractor={(item) => item.uid}
@@ -393,13 +394,13 @@ export default function FriendsPage() {
                                         disabled={isFriend || hasOutgoing}
                                     >
                                         {isFriend ? (
-                                            <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+                                            <Ionicons name="checkmark-circle" size={24} color={colors.success} />
                                         ) : hasOutgoing ? (
-                                            <Ionicons name="time-outline" size={24} color="#866FD8" />
+                                            <Ionicons name="time-outline" size={24} color={colors.primary} />
                                         ) : hasIncoming ? (
-                                            <Ionicons name="arrow-undo-circle" size={24} color="#FF9800" />
+                                            <Ionicons name="arrow-undo-circle" size={24} color={colors.warning} />
                                         ) : (
-                                            <Ionicons name="person-add-outline" size={20} color="#866FD8" />
+                                            <Ionicons name="person-add-outline" size={20} color={colors.primary} />
                                         )}
                                     </TouchableOpacity>
                                 </TouchableOpacity>
@@ -413,40 +414,132 @@ export default function FriendsPage() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff', paddingTop: 60 },
-    pageTitle: { fontSize: 24, fontWeight: '700', paddingHorizontal: 16, marginBottom: 12 },
-    tabBar: { flexDirection: 'row', paddingHorizontal: 16, marginBottom: 12 },
-    tabItem: {
-        flex: 1, alignItems: 'center', paddingVertical: 8,
-        borderBottomWidth: 2, borderBottomColor: '#eee',
+    container: {
+        flex: 1,
+        backgroundColor: colors.background,
+        paddingTop: 60,
     },
-    tabItemActive: { borderBottomColor: '#866FD8' },
-    tabText: { fontSize: 14, color: '#999' },
-    tabTextActive: { color: '#866FD8', fontWeight: '600' },
+    pageTitle: {
+        fontSize: fontSizes.xxl,
+        fontFamily: fonts.display,
+        color: colors.text,
+        paddingHorizontal: spacing.base,
+        marginBottom: spacing.md,
+    },
+    tabBar: {
+        flexDirection: 'row',
+        paddingHorizontal: spacing.base,
+        marginBottom: spacing.md,
+        backgroundColor: colors.surface,
+        borderRadius: radius.md,
+        marginHorizontal: spacing.base,
+        padding: spacing.xs,
+    },
+    tabItem: {
+        flex: 1,
+        alignItems: 'center',
+        paddingVertical: spacing.sm,
+        borderBottomWidth: 2,
+        borderBottomColor: 'transparent',
+    },
+    tabItemActive: {
+        borderBottomColor: colors.primary,
+    },
+    tabText: {
+        fontSize: fontSizes.sm,
+        fontFamily: fonts.bodyMedium,
+        color: colors.textMuted,
+    },
+    tabTextActive: {
+        color: colors.primary,
+        fontFamily: fonts.bodySemiBold,
+    },
     listItem: {
-        flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16,
-        paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: spacing.base,
+        paddingVertical: spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
     },
     listAvatar: {
-        width: 40, height: 40, borderRadius: 20, backgroundColor: '#866FD8',
-        alignItems: 'center', justifyContent: 'center', marginRight: 12,
+        width: 40,
+        height: 40,
+        borderRadius: radius.full,
+        backgroundColor: colors.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: spacing.md,
     },
-    listAvatarText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-    listName: { flex: 1, fontSize: 16, color: '#333' },
-    removeBtn: { padding: 4 },
-    addBtn: { padding: 4 },
+    listAvatarText: {
+        color: colors.text,
+        fontSize: fontSizes.lg,
+        fontFamily: fonts.heading,
+    },
+    listName: {
+        flex: 1,
+        fontSize: fontSizes.base,
+        fontFamily: fonts.bodyMedium,
+        color: colors.text,
+    },
+    removeBtn: {
+        padding: spacing.xs,
+    },
+    addBtn: {
+        padding: spacing.xs,
+    },
     requestItem: {
-        flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16,
-        paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: spacing.base,
+        paddingVertical: spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
     },
-    requestType: { fontSize: 12, color: '#999', marginTop: 2 },
-    actionBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
-    actionBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+    requestType: {
+        fontSize: fontSizes.xs,
+        fontFamily: fonts.body,
+        color: colors.textSecondary,
+        marginTop: 2,
+    },
+    actionBtn: {
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm - 2,
+        borderRadius: radius.sm,
+    },
+    actionBtnText: {
+        color: colors.text,
+        fontSize: fontSizes.sm,
+        fontFamily: fonts.bodySemiBold,
+    },
     searchInput: {
-        marginHorizontal: 16, backgroundColor: '#f5f5f5', borderRadius: 20,
-        paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, marginBottom: 12,
+        marginHorizontal: spacing.base,
+        backgroundColor: colors.surface,
+        borderRadius: radius.full,
+        borderWidth: 1,
+        borderColor: colors.glassBorder,
+        paddingHorizontal: spacing.base,
+        paddingVertical: 10,
+        fontSize: fontSizes.md,
+        fontFamily: fonts.body,
+        color: colors.text,
+        marginBottom: spacing.md,
     },
-    mutualCount: { fontSize: 11, color: '#866FD8', marginTop: 2 },
-    emptyState: { alignItems: 'center', marginTop: 60 },
-    emptyText: { color: '#999', fontSize: 15, marginTop: 12, textAlign: 'center' },
+    mutualCount: {
+        fontSize: fontSizes.xs,
+        fontFamily: fonts.bodyMedium,
+        color: colors.accent,
+        marginTop: 2,
+    },
+    emptyState: {
+        alignItems: 'center',
+        marginTop: 60,
+    },
+    emptyText: {
+        color: colors.textMuted,
+        fontSize: fontSizes.md,
+        fontFamily: fonts.body,
+        marginTop: spacing.md,
+        textAlign: 'center',
+    },
 });
