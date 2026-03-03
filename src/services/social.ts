@@ -411,6 +411,39 @@ export async function listFriends(uid: string): Promise<FriendEdge[]> {
     }
 }
 
+export interface MutualFriend {
+    uid: string;
+    displayName: string;
+    photoURL?: string;
+}
+
+export async function getMutualFriends(
+    myUid: string,
+    theirUid: string,
+): Promise<MutualFriend[]> {
+    const [myFriends, theirFriends] = await Promise.all([
+        listFriends(myUid),
+        listFriends(theirUid),
+    ]);
+    const theirSet = new Set(theirFriends.map((f) => f.friendUid));
+    const mutualUids = myFriends
+        .map((f) => f.friendUid)
+        .filter((uid) => theirSet.has(uid));
+
+    if (mutualUids.length === 0) return [];
+
+    const profiles = await Promise.all(
+        mutualUids.map((uid) => fetchUserProfile(uid)),
+    );
+    return profiles
+        .filter((p): p is UserProfile => p !== null)
+        .map((p) => ({
+            uid: p.uid,
+            displayName: p.displayName,
+            photoURL: p.photoURL,
+        }));
+}
+
 // ================================================================
 // Events Feed (paginated)
 // ================================================================
