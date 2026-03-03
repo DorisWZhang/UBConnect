@@ -29,6 +29,7 @@ const CATEGORIES = [
   { id: 'Volunteering', icon: 'heart-outline' },
   { id: 'Outdoors', icon: 'leaf-outline' },
   { id: 'Fitness', icon: 'barbell-outline' },
+  { id: 'Indoor', icon: 'home-outline' },
 ] as const;
 
 export default function ExplorePage() {

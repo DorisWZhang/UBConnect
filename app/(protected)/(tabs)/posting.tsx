@@ -22,7 +22,7 @@ import { logEvent } from '@/src/telemetry';
 
 const CATEGORIES = [
   'Sports', 'Esports', 'Music', 'Arts', 'Food',
-  'Academic', 'Social', 'Volunteering', 'Outdoors', 'Fitness',
+  'Academic', 'Social', 'Volunteering', 'Outdoors', 'Fitness', 'Indoor',
 ];
 
 const VISIBILITY_OPTIONS = ['public', 'friends'] as const;
