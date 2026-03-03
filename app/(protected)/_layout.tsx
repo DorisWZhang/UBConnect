@@ -4,15 +4,15 @@ import { Stack, Redirect } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '@/src/auth/AuthContext';
 import { ProfileProvider } from '@/contexts/ProfileContext';
+import { colors } from '@/src/theme';
 
 export default function ProtectedLayout() {
     const { user, loading } = useAuth();
 
-    // Show loading spinner while auth state resolves
     if (loading) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>
-                <ActivityIndicator size="large" color="#866FD8" />
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+                <ActivityIndicator size="large" color={colors.primary} />
             </View>
         );
     }
@@ -30,7 +30,7 @@ export default function ProtectedLayout() {
     // Verified — render protected screens wrapped in ProfileProvider
     return (
         <ProfileProvider>
-            <Stack screenOptions={{ headerShown: false }}>
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="edit-profile" />
                 <Stack.Screen name="event/[eventId]" options={{ presentation: 'card' }} />
