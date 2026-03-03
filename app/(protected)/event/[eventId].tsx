@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     StyleSheet, View, Text, ScrollView, TouchableOpacity,
-    TextInput, ActivityIndicator, Alert, FlatList,
+    TextInput, ActivityIndicator, Alert, FlatList, Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -11,8 +11,11 @@ import { Comment as EventComment } from '@/components/models/Comment';
 import {
     fetchEventById, fetchTopLevelComments, fetchReplies,
     addEventComment, rsvpToEvent, removeRsvp,
-    fetchRsvpStatus, fetchRsvpCount, isPermissionDenied, deleteEvent
+    fetchRsvpStatus, fetchRsvpCount, isPermissionDenied, deleteEvent,
+    fetchUserProfile,
 } from '@/src/services/social';
+import { UserProfile } from '@/components/models/UserProfile';
+import { getAvatarSource } from '@/src/utils/avatarMap';
 import { createNotification } from '@/src/services/notifications';
 import { ConnectEvent } from '@/components/models/ConnectEvent';
 import { logFirestoreError } from '@/src/telemetry';
@@ -27,6 +30,7 @@ export default function EventDetailScreen() {
     const [event, setEvent] = useState<ConnectEvent | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [hostProfile, setHostProfile] = useState<UserProfile | null>(null);
 
     // Comments
     const [comments, setComments] = useState<EventComment[]>([]);
@@ -47,6 +51,12 @@ export default function EventDetailScreen() {
         try {
             const e = await fetchEventById(eventId);
             setEvent(e);
+            if (e?.createdBy) {
+                try {
+                    const prof = await fetchUserProfile(e.createdBy);
+                    setHostProfile(prof);
+                } catch { }
+            }
         } catch (err) {
             if (isPermissionDenied(err)) {
                 setError('You don\'t have permission to view this event.');
@@ -279,11 +289,17 @@ export default function EventDetailScreen() {
                         onPress={() => router.push(`/profile/${event.createdBy}`)}
                     >
                         <View style={styles.hostAvatar}>
-                            <Text style={styles.hostInitial}>
-                                {event.createdBy.charAt(0).toUpperCase()}
-                            </Text>
+                            {getAvatarSource(hostProfile?.photoURL) ? (
+                                <Image source={getAvatarSource(hostProfile?.photoURL)!} style={styles.hostAvatarImg} />
+                            ) : (
+                                <Text style={styles.hostInitial}>
+                                    {(hostProfile?.displayName || '?').charAt(0).toUpperCase()}
+                                </Text>
+                            )}
                         </View>
-                        <Text style={styles.hostText}>View Host Profile</Text>
+                        <Text style={styles.hostText}>
+                            {hostProfile?.displayName || 'View Host Profile'}
+                        </Text>
                         <Ionicons name="chevron-forward" size={16} color={colors.primary} />
                     </TouchableOpacity>
                 ) : (
@@ -455,7 +471,9 @@ const styles = StyleSheet.create({
     hostAvatar: {
         width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary,
         alignItems: 'center', justifyContent: 'center', marginRight: 10,
+        overflow: 'hidden',
     },
+    hostAvatarImg: { width: 36, height: 36, borderRadius: 18 },
     hostInitial: { color: colors.text, fontSize: fontSizes.base, fontFamily: fonts.display },
     hostText: {
         flex: 1, fontSize: fontSizes.md, color: colors.primary,

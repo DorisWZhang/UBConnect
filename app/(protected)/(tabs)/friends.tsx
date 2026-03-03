@@ -1,9 +1,10 @@
 // app/(tabs)/friends.tsx — Friends list, requests, and user search
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-    StyleSheet, View, Text, FlatList, TouchableOpacity, TextInput,
+    StyleSheet, View, Text, Image, FlatList, TouchableOpacity, TextInput,
     ActivityIndicator, Alert,
 } from 'react-native';
+import { getAvatarSource } from '@/src/utils/avatarMap';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/src/auth/AuthContext';
@@ -27,6 +28,7 @@ interface PopulatedFriendRequest extends FriendRequest {
 
 interface PopulatedFriendEdge extends FriendEdge {
     displayName?: string;
+    photoURL?: string;
 }
 
 export default function FriendsPage() {
@@ -58,7 +60,7 @@ export default function FriendsPage() {
                 result.map(async (f) => {
                     try {
                         const prof = await fetchUserProfile(f.friendUid);
-                        return { ...f, displayName: prof?.displayName };
+                        return { ...f, displayName: prof?.displayName, photoURL: prof?.photoURL };
                     } catch (e) {
                         return f;
                     }
@@ -272,9 +274,13 @@ export default function FriendsPage() {
                                 onPress={() => router.push(`/profile/${item.friendUid}`)}
                             >
                                 <View style={styles.listAvatar}>
-                                    <Text style={styles.listAvatarText}>
-                                        {(item.displayName || 'Unknown User').charAt(0).toUpperCase()}
-                                    </Text>
+                                    {getAvatarSource(item.photoURL) ? (
+                                        <Image source={getAvatarSource(item.photoURL)!} style={styles.listAvatarImg} />
+                                    ) : (
+                                        <Text style={styles.listAvatarText}>
+                                            {(item.displayName || 'Unknown User').charAt(0).toUpperCase()}
+                                        </Text>
+                                    )}
                                 </View>
                                 <Text style={styles.listName}>{item.displayName || 'Unknown User'}</Text>
                                 <TouchableOpacity
@@ -376,9 +382,13 @@ export default function FriendsPage() {
                                     onPress={() => router.push(`/profile/${item.uid}`)}
                                 >
                                     <View style={styles.listAvatar}>
-                                        <Text style={styles.listAvatarText}>
-                                            {item.displayName.charAt(0).toUpperCase()}
-                                        </Text>
+                                        {getAvatarSource(item.photoURL) ? (
+                                            <Image source={getAvatarSource(item.photoURL)!} style={styles.listAvatarImg} />
+                                        ) : (
+                                            <Text style={styles.listAvatarText}>
+                                                {item.displayName.charAt(0).toUpperCase()}
+                                            </Text>
+                                        )}
                                     </View>
                                     <View style={{ flex: 1 }}>
                                         <Text style={styles.listName}>{item.displayName}</Text>
@@ -470,6 +480,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: spacing.md,
+        overflow: 'hidden',
+    },
+    listAvatarImg: {
+        width: 40,
+        height: 40,
+        borderRadius: radius.full,
     },
     listAvatarText: {
         color: colors.text,
