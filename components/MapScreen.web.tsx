@@ -5,6 +5,7 @@ import { ConnectEvent } from '@/components/models/ConnectEvent';
 import { fetchEventsFeed, listFriends } from '@/src/services/social';
 import { useAuth } from '@/src/auth/AuthContext';
 import { captureException } from '@/src/telemetry';
+import { colors, fonts, fontSizes, spacing, radius } from '@/src/theme';
 
 const UBC_REGION = {
     latitude: 49.2606,
@@ -101,8 +102,8 @@ export default function MapScreenWeb() {
     if (!mapComponentsLoaded) {
         return (
             <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <ActivityIndicator size="large" color="#866FD8" />
-                <Text style={{ marginTop: 12, color: '#666' }}>Loading Map...</Text>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={styles.loadingText}>Loading Map...</Text>
             </View>
         );
     }
@@ -114,9 +115,10 @@ export default function MapScreenWeb() {
                 zoom={14}
                 style={{ height: '100%', width: '100%', zIndex: 0 }}
             >
+                {/* Dark tile layer for Nightfall Campus theme */}
                 <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+                    url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                 />
 
                 {events.map((event) => (
@@ -134,7 +136,7 @@ export default function MapScreenWeb() {
                                     style={styles.calloutAction}
                                     onPress={() => router.push(`/event/${event.id}`)}
                                 >
-                                    Tap for details →
+                                    Tap for details
                                 </Text>
                             </View>
                         </Popup>
@@ -143,7 +145,7 @@ export default function MapScreenWeb() {
             </MapContainer>
             {loading && (
                 <View style={styles.loadingOverlay}>
-                    <ActivityIndicator size="small" color="#866FD8" />
+                    <ActivityIndicator size="small" color={colors.primary} />
                 </View>
             )}
         </View>
@@ -151,18 +153,42 @@ export default function MapScreenWeb() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1 },
+    container: { flex: 1, backgroundColor: colors.background },
+    loadingText: {
+        marginTop: spacing.md,
+        color: colors.textSecondary,
+        fontFamily: fonts.body,
+        fontSize: fontSizes.md,
+    },
     loadingOverlay: {
         position: 'absolute',
         top: 60,
         alignSelf: 'center',
-        backgroundColor: 'rgba(255,255,255,0.8)',
-        borderRadius: 20,
-        padding: 8,
+        backgroundColor: colors.surface,
+        borderRadius: radius.xl,
+        borderWidth: 1,
+        borderColor: colors.glassBorder,
+        padding: spacing.sm,
         zIndex: 10,
     },
-    callout: { width: 180, padding: 4 },
-    calloutTitle: { fontSize: 14, fontWeight: '600', color: '#333' },
-    calloutSub: { fontSize: 12, color: '#666', marginTop: 2 },
-    calloutAction: { fontSize: 11, color: '#866FD8', marginTop: 8, cursor: 'pointer' },
+    callout: { width: 180, padding: spacing.xs },
+    calloutTitle: {
+        fontSize: fontSizes.sm,
+        fontFamily: fonts.bodySemiBold,
+        fontWeight: '600',
+        color: colors.surface,
+    },
+    calloutSub: {
+        fontSize: fontSizes.xs,
+        fontFamily: fonts.body,
+        color: colors.textMuted,
+        marginTop: 2,
+    },
+    calloutAction: {
+        fontSize: fontSizes.xs,
+        fontFamily: fonts.bodyMedium,
+        color: colors.primary,
+        marginTop: spacing.sm,
+        cursor: 'pointer',
+    },
 });

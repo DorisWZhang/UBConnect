@@ -19,6 +19,8 @@ import { useProfile } from '@/contexts/ProfileContext';
 import { validateEvent } from '@/components/models/ConnectEvent';
 import { createEvent, isPermissionDenied } from '@/src/services/social';
 import { logEvent } from '@/src/telemetry';
+import { colors, fonts, fontSizes, spacing, radius } from '@/src/theme';
+import GradientButton from '@/components/ui/GradientButton';
 
 const CATEGORIES = [
   'Sports', 'Esports', 'Music', 'Arts', 'Food',
@@ -134,7 +136,7 @@ export default function PostingPage() {
         onChangeText={setTitle}
         placeholder="What's happening?"
         maxLength={80}
-        placeholderTextColor="#aaa"
+        placeholderTextColor={colors.textMuted}
       />
       <Text style={styles.charCount}>{title.length}/80</Text>
 
@@ -147,7 +149,7 @@ export default function PostingPage() {
         placeholder="Tell people about your event..."
         multiline
         maxLength={2000}
-        placeholderTextColor="#aaa"
+        placeholderTextColor={colors.textMuted}
       />
       <Text style={styles.charCount}>{description.length}/2000</Text>
 
@@ -167,6 +169,9 @@ export default function PostingPage() {
         ))}
       </View>
 
+      {/* Divider */}
+      <View style={styles.divider} />
+
       {/* Visibility */}
       <Text style={styles.label}>Visibility</Text>
       <View style={styles.visRow}>
@@ -179,7 +184,7 @@ export default function PostingPage() {
             <Ionicons
               name={v === 'public' ? 'globe-outline' : 'lock-closed-outline'}
               size={16}
-              color={visibility === v ? '#fff' : '#666'}
+              color={visibility === v ? '#fff' : colors.textMuted}
             />
             <Text style={[styles.visText, visibility === v && styles.visTextActive]}>
               {v === 'public' ? 'Public' : 'Friends Only'}
@@ -221,31 +226,47 @@ export default function PostingPage() {
             width: '100%',
           },
           textInput: {
-            backgroundColor: '#f5f5f5',
-            borderRadius: 10,
-            paddingHorizontal: 12,
-            height: 44, // Match other inputs roughly
-            fontSize: 15,
-            color: '#333',
+            backgroundColor: colors.surface,
+            borderRadius: radius.md,
+            borderWidth: 1,
+            borderColor: colors.glassBorder,
+            paddingHorizontal: spacing.md,
+            height: 44,
+            fontSize: fontSizes.md,
+            color: colors.text,
+            fontFamily: fonts.body,
           },
           predefinedPlacesDescription: {
-            color: '#1faadb',
+            color: colors.accent,
           },
           listView: {
-            backgroundColor: '#fff',
-            borderRadius: 10,
+            backgroundColor: colors.surfaceLight,
+            borderRadius: radius.md,
             borderWidth: 1,
-            borderColor: '#eee',
-            marginTop: 5,
+            borderColor: colors.glassBorder,
+            marginTop: spacing.xs,
             elevation: 3,
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
+            shadowOpacity: 0.3,
             shadowRadius: 4,
+          },
+          row: {
+            backgroundColor: colors.surfaceLight,
+          },
+          description: {
+            color: colors.text,
+          },
+          separator: {
+            backgroundColor: colors.border,
+          },
+          poweredContainer: {
+            backgroundColor: colors.surfaceLight,
+            borderTopColor: colors.border,
           },
         }}
         textInputProps={{
-          placeholderTextColor: '#aaa',
+          placeholderTextColor: colors.textMuted,
         }}
       />
 
@@ -258,26 +279,28 @@ export default function PostingPage() {
           onChange: (e: any) => setStartDate(new Date(e.target.value)),
           style: {
             padding: '12px',
-            borderRadius: '10px',
-            border: 'none',
-            backgroundColor: '#f5f5f5',
+            borderRadius: '12px',
+            border: `1px solid ${colors.glassBorder}`,
+            backgroundColor: colors.surface,
             fontSize: '15px',
-            color: '#333',
+            color: colors.text,
             fontFamily: 'inherit',
             width: '100%',
             boxSizing: 'border-box',
+            colorScheme: 'dark',
           },
         })
       ) : (
         <>
           <TouchableOpacity style={styles.dateButton} onPress={() => setShowStartPicker(!showStartPicker)}>
-            <Ionicons name="time-outline" size={18} color="#666" />
+            <Ionicons name="time-outline" size={18} color={colors.textMuted} />
             <Text style={styles.dateText}>{formatDate(startDate)}</Text>
           </TouchableOpacity>
           {showStartPicker && DateTimePicker && (
             <DateTimePicker
               value={startDate}
               mode="datetime"
+              themeVariant="dark"
               onChange={(e: any, d: any) => {
                 setShowStartPicker(Platform.OS === 'ios');
                 if (d) setStartDate(d);
@@ -295,26 +318,28 @@ export default function PostingPage() {
           onChange: (e: any) => setEndDate(new Date(e.target.value)),
           style: {
             padding: '12px',
-            borderRadius: '10px',
-            border: 'none',
-            backgroundColor: '#f5f5f5',
+            borderRadius: '12px',
+            border: `1px solid ${colors.glassBorder}`,
+            backgroundColor: colors.surface,
             fontSize: '15px',
-            color: '#333',
+            color: colors.text,
             fontFamily: 'inherit',
             width: '100%',
             boxSizing: 'border-box',
+            colorScheme: 'dark',
           },
         })
       ) : (
         <>
           <TouchableOpacity style={styles.dateButton} onPress={() => setShowEndPicker(!showEndPicker)}>
-            <Ionicons name="time-outline" size={18} color="#666" />
+            <Ionicons name="time-outline" size={18} color={colors.textMuted} />
             <Text style={styles.dateText}>{formatDate(endDate)}</Text>
           </TouchableOpacity>
           {showEndPicker && DateTimePicker && (
             <DateTimePicker
               value={endDate}
               mode="datetime"
+              themeVariant="dark"
               onChange={(e: any, d: any) => {
                 setShowEndPicker(Platform.OS === 'ios');
                 if (d) setEndDate(d);
@@ -324,6 +349,9 @@ export default function PostingPage() {
         </>
       )}
 
+      {/* Divider */}
+      <View style={styles.divider} />
+
       {/* Capacity */}
       <Text style={styles.label}>Capacity (optional)</Text>
       <TextInput
@@ -332,59 +360,117 @@ export default function PostingPage() {
         onChangeText={setCapacity}
         placeholder="Max attendees"
         keyboardType="numeric"
-        placeholderTextColor="#aaa"
+        placeholderTextColor={colors.textMuted}
       />
 
       {/* Submit */}
-      <TouchableOpacity
-        style={[styles.submitBtn, submitting && { opacity: 0.6 }]}
+      <GradientButton
+        title="Post Event"
         onPress={handleSubmit}
+        loading={submitting}
         disabled={submitting}
-      >
-        {submitting ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.submitText}>Post Event</Text>
-        )}
-      </TouchableOpacity>
+        size="lg"
+        style={{ marginTop: spacing.xl }}
+      />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  scrollContent: { padding: 16, paddingTop: 60, paddingBottom: 40 },
-  pageTitle: { fontSize: 24, fontWeight: '700', marginBottom: 20 },
-  label: { fontSize: 15, fontWeight: '600', color: '#333', marginTop: 12, marginBottom: 6 },
-  input: {
-    backgroundColor: '#f5f5f5', borderRadius: 10, padding: 12,
-    fontSize: 15, color: '#333',
+  container: { flex: 1, backgroundColor: colors.background },
+  scrollContent: { padding: spacing.base, paddingTop: 60, paddingBottom: 40 },
+  pageTitle: {
+    fontSize: fontSizes.xxl,
+    fontFamily: fonts.display,
+    color: colors.text,
+    marginBottom: spacing.lg,
   },
-  charCount: { fontSize: 11, color: '#999', textAlign: 'right', marginTop: 2 },
+  label: {
+    fontSize: fontSizes.md,
+    fontFamily: fonts.bodySemiBold,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  input: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    padding: spacing.md,
+    fontSize: fontSizes.md,
+    fontFamily: fonts.body,
+    color: colors.text,
+  },
+  charCount: {
+    fontSize: fontSizes.xs,
+    fontFamily: fonts.body,
+    color: colors.textMuted,
+    textAlign: 'right',
+    marginTop: 2,
+  },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap' },
   catChip: {
-    backgroundColor: '#f0f0f0', borderRadius: 16, paddingHorizontal: 12,
-    paddingVertical: 6, marginRight: 8, marginBottom: 8,
+    backgroundColor: colors.glass,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginRight: spacing.sm,
+    marginBottom: spacing.sm,
   },
-  catChipActive: { backgroundColor: '#866FD8' },
-  catChipText: { fontSize: 13, color: '#666' },
-  catChipTextActive: { color: '#fff', fontWeight: '600' },
+  catChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  catChipText: {
+    fontSize: fontSizes.sm,
+    fontFamily: fonts.bodyMedium,
+    color: colors.textSecondary,
+  },
+  catChipTextActive: {
+    color: '#fff',
+    fontFamily: fonts.bodySemiBold,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.lg,
+  },
   visRow: { flexDirection: 'row', gap: 10 },
   visChip: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 10, borderRadius: 8, borderWidth: 1.5, borderColor: '#ddd',
+    paddingVertical: spacing.md, borderRadius: radius.sm,
+    borderWidth: 1.5, borderColor: colors.glassBorder,
+    backgroundColor: colors.glass,
   },
-  visChipActive: { backgroundColor: '#866FD8', borderColor: '#866FD8' },
-  visText: { marginLeft: 6, fontSize: 14, color: '#666' },
-  visTextActive: { color: '#fff', fontWeight: '600' },
+  visChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  visText: {
+    marginLeft: 6,
+    fontSize: fontSizes.sm,
+    fontFamily: fonts.bodyMedium,
+    color: colors.textMuted,
+  },
+  visTextActive: {
+    color: '#fff',
+    fontFamily: fonts.bodySemiBold,
+  },
   dateButton: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#f5f5f5',
-    borderRadius: 10, padding: 12,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    padding: spacing.md,
   },
-  dateText: { fontSize: 15, color: '#333', marginLeft: 8 },
-  submitBtn: {
-    backgroundColor: '#866FD8', borderRadius: 12, paddingVertical: 14,
-    alignItems: 'center', marginTop: 24,
+  dateText: {
+    fontSize: fontSizes.md,
+    fontFamily: fonts.body,
+    color: colors.text,
+    marginLeft: spacing.sm,
   },
-  submitText: { color: '#fff', fontSize: 17, fontWeight: '700' },
 });

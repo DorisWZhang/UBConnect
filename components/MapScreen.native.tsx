@@ -7,6 +7,94 @@ import { fetchEventsFeed, listFriends } from '@/src/services/social';
 import { useAuth } from '@/src/auth/AuthContext';
 import { captureException } from '@/src/telemetry';
 import { Text } from 'react-native';
+import { colors, fonts, fontSizes, spacing, radius } from '@/src/theme';
+
+// Dark map style for "Nightfall Campus" theme
+const DARK_MAP_STYLE = [
+    { elementType: 'geometry', stylers: [{ color: '#0B0B14' }] },
+    { elementType: 'labels.text.fill', stylers: [{ color: '#9B9BB0' }] },
+    { elementType: 'labels.text.stroke', stylers: [{ color: '#0B0B14' }] },
+    {
+        featureType: 'administrative',
+        elementType: 'geometry.stroke',
+        stylers: [{ color: '#1E1E38' }],
+    },
+    {
+        featureType: 'administrative.land_parcel',
+        elementType: 'labels.text.fill',
+        stylers: [{ color: '#6B6B80' }],
+    },
+    {
+        featureType: 'landscape',
+        elementType: 'geometry',
+        stylers: [{ color: '#16162A' }],
+    },
+    {
+        featureType: 'poi',
+        elementType: 'geometry',
+        stylers: [{ color: '#1E1E38' }],
+    },
+    {
+        featureType: 'poi',
+        elementType: 'labels.text.fill',
+        stylers: [{ color: '#6B6B80' }],
+    },
+    {
+        featureType: 'poi.park',
+        elementType: 'geometry.fill',
+        stylers: [{ color: '#1A2A1A' }],
+    },
+    {
+        featureType: 'poi.park',
+        elementType: 'labels.text.fill',
+        stylers: [{ color: '#6B6B80' }],
+    },
+    {
+        featureType: 'road',
+        elementType: 'geometry',
+        stylers: [{ color: '#1E1E38' }],
+    },
+    {
+        featureType: 'road',
+        elementType: 'geometry.stroke',
+        stylers: [{ color: '#252545' }],
+    },
+    {
+        featureType: 'road',
+        elementType: 'labels.text.fill',
+        stylers: [{ color: '#9B9BB0' }],
+    },
+    {
+        featureType: 'road.highway',
+        elementType: 'geometry',
+        stylers: [{ color: '#252545' }],
+    },
+    {
+        featureType: 'road.highway',
+        elementType: 'geometry.stroke',
+        stylers: [{ color: '#1E1E38' }],
+    },
+    {
+        featureType: 'transit',
+        elementType: 'geometry',
+        stylers: [{ color: '#16162A' }],
+    },
+    {
+        featureType: 'transit.station',
+        elementType: 'labels.text.fill',
+        stylers: [{ color: '#6B6B80' }],
+    },
+    {
+        featureType: 'water',
+        elementType: 'geometry',
+        stylers: [{ color: '#0a0a1a' }],
+    },
+    {
+        featureType: 'water',
+        elementType: 'labels.text.fill',
+        stylers: [{ color: '#6B6B80' }],
+    },
+];
 
 // Default UBC landmarks — shown alongside real events
 const UBC_MARKERS = [
@@ -67,6 +155,8 @@ export default function MapScreenNative() {
                 initialRegion={UBC_REGION}
                 showsUserLocation
                 showsMyLocationButton
+                customMapStyle={DARK_MAP_STYLE}
+                userInterfaceStyle="dark"
             >
                 {/* Real event markers — tap to navigate to event detail */}
 
@@ -80,7 +170,7 @@ export default function MapScreenNative() {
                         }}
                         title={event.title}
                         description={event.locationName || undefined}
-                        pinColor="#FF6B6B"
+                        pinColor={colors.primary}
                         onCalloutPress={() => router.push(`/event/${event.id}`)}
                     >
                         <Callout>
@@ -89,7 +179,7 @@ export default function MapScreenNative() {
                                 {event.locationName ? (
                                     <Text style={styles.calloutSub}>{event.locationName}</Text>
                                 ) : null}
-                                <Text style={styles.calloutAction}>Tap for details →</Text>
+                                <Text style={styles.calloutAction}>Tap for details</Text>
                             </View>
                         </Callout>
                     </Marker>
@@ -97,7 +187,7 @@ export default function MapScreenNative() {
             </MapView>
             {loading && (
                 <View style={styles.loadingOverlay}>
-                    <ActivityIndicator size="small" color="#866FD8" />
+                    <ActivityIndicator size="small" color={colors.primary} />
                 </View>
             )}
         </View>
@@ -105,18 +195,35 @@ export default function MapScreenNative() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1 },
+    container: { flex: 1, backgroundColor: colors.background },
     map: { flex: 1 },
     loadingOverlay: {
         position: 'absolute',
         top: 60,
         alignSelf: 'center',
-        backgroundColor: 'rgba(255,255,255,0.8)',
-        borderRadius: 20,
-        padding: 8,
+        backgroundColor: colors.surface,
+        borderRadius: radius.xl,
+        borderWidth: 1,
+        borderColor: colors.glassBorder,
+        padding: spacing.sm,
     },
-    callout: { width: 180, padding: 4 },
-    calloutTitle: { fontSize: 14, fontWeight: '600', color: '#333' },
-    calloutSub: { fontSize: 12, color: '#666', marginTop: 2 },
-    calloutAction: { fontSize: 11, color: '#866FD8', marginTop: 4 },
+    callout: { width: 180, padding: spacing.xs },
+    calloutTitle: {
+        fontSize: fontSizes.sm,
+        fontFamily: fonts.bodySemiBold,
+        fontWeight: '600',
+        color: colors.surface,
+    },
+    calloutSub: {
+        fontSize: fontSizes.xs,
+        fontFamily: fonts.body,
+        color: colors.textMuted,
+        marginTop: 2,
+    },
+    calloutAction: {
+        fontSize: fontSizes.xs,
+        fontFamily: fonts.bodyMedium,
+        color: colors.primary,
+        marginTop: spacing.xs,
+    },
 });
