@@ -16,6 +16,8 @@ import {
 } from '@/src/services/social';
 import InlineNotice from '@/components/InlineNotice';
 import { captureException } from '@/src/telemetry';
+import GlassCard from '@/components/ui/GlassCard';
+import { colors, fonts, fontSizes, spacing, radius } from '@/src/theme';
 
 const CATEGORIES = [
   { id: 'All', icon: 'grid-outline' },
@@ -156,36 +158,38 @@ export default function ExplorePage() {
 
   const renderEvent = ({ item }: { item: ConnectEvent }) => (
     <TouchableOpacity
-      style={styles.eventCard}
       onPress={() => router.push(`/event/${item.id}`)}
       activeOpacity={0.7}
+      style={styles.eventCardWrapper}
     >
-      <View style={styles.eventHeader}>
-        <Text style={styles.eventTitle} numberOfLines={2}>{item.title}</Text>
-        {item.visibility === 'friends' && (
-          <Ionicons name="lock-closed" size={14} color="#FF9800" />
-        )}
-      </View>
-      <Text style={styles.eventDesc} numberOfLines={2}>{item.description}</Text>
-      <View style={styles.eventMeta}>
-        {item.locationName ? (
-          <View style={styles.metaItem}>
-            <Ionicons name="location-outline" size={14} color="#666" />
-            <Text style={styles.metaText} numberOfLines={1}>{item.locationName}</Text>
-          </View>
-        ) : null}
-        {item.startTime && (
-          <View style={styles.metaItem}>
-            <Ionicons name="time-outline" size={14} color="#666" />
-            <Text style={styles.metaText}>{formatDate(item.startTime)}</Text>
-          </View>
-        )}
-        {item.categoryId ? (
-          <View style={styles.categoryChip}>
-            <Text style={styles.categoryChipText}>{item.categoryId}</Text>
-          </View>
-        ) : null}
-      </View>
+      <GlassCard style={styles.eventCard}>
+        <View style={styles.eventHeader}>
+          <Text style={styles.eventTitle} numberOfLines={2}>{item.title}</Text>
+          {item.visibility === 'friends' && (
+            <Ionicons name="lock-closed" size={14} color={colors.warning} />
+          )}
+        </View>
+        <Text style={styles.eventDesc} numberOfLines={2}>{item.description}</Text>
+        <View style={styles.eventMeta}>
+          {item.locationName ? (
+            <View style={styles.metaItem}>
+              <Ionicons name="location-outline" size={14} color={colors.textMuted} />
+              <Text style={styles.metaText} numberOfLines={1}>{item.locationName}</Text>
+            </View>
+          ) : null}
+          {item.startTime && (
+            <View style={styles.metaItem}>
+              <Ionicons name="time-outline" size={14} color={colors.textMuted} />
+              <Text style={styles.metaText}>{formatDate(item.startTime)}</Text>
+            </View>
+          )}
+          {item.categoryId ? (
+            <View style={styles.categoryBadge}>
+              <Text style={styles.categoryBadgeText}>{item.categoryId}</Text>
+            </View>
+          ) : null}
+        </View>
+      </GlassCard>
     </TouchableOpacity>
   );
 
@@ -195,20 +199,23 @@ export default function ExplorePage() {
 
       {/* Search */}
       <View style={styles.searchRow}>
-        <TextInput
-          style={styles.searchInput}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Search events..."
-          placeholderTextColor="#aaa"
-          returnKeyType="search"
-          onSubmitEditing={handleSearch}
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => { setSearchQuery(''); loadFeed(); }} style={styles.clearBtn}>
-            <Ionicons name="close-circle" size={20} color="#999" />
-          </TouchableOpacity>
-        )}
+        <View style={styles.searchInputWrapper}>
+          <Ionicons name="search-outline" size={18} color={colors.textMuted} style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search events..."
+            placeholderTextColor={colors.textMuted}
+            returnKeyType="search"
+            onSubmitEditing={handleSearch}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => { setSearchQuery(''); loadFeed(); }} style={styles.clearBtn}>
+              <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Category Filter */}
@@ -218,6 +225,7 @@ export default function ExplorePage() {
         keyExtractor={(item) => item.id}
         showsHorizontalScrollIndicator={false}
         style={styles.categoryBar}
+        contentContainerStyle={styles.categoryBarContent}
         renderItem={({ item }) => (
           <TouchableOpacity
             style={[styles.catChip, categoryFilter === item.id && styles.catChipActive]}
@@ -226,7 +234,7 @@ export default function ExplorePage() {
             <Ionicons
               name={item.icon}
               size={16}
-              color={categoryFilter === item.id ? '#fff' : '#666'}
+              color={categoryFilter === item.id ? '#fff' : colors.textSecondary}
             />
             <Text style={[styles.catChipText, categoryFilter === item.id && styles.catChipTextActive]}>
               {item.id}
@@ -237,11 +245,11 @@ export default function ExplorePage() {
 
       {/* Feed */}
       {feedError ? (
-        <View style={{ marginHorizontal: 16, marginTop: 20 }}>
+        <View style={styles.feedErrorContainer}>
           <InlineNotice message={feedError} type="error" />
         </View>
       ) : loading ? (
-        <ActivityIndicator size="large" color="#866FD8" style={{ marginTop: 40 }} />
+        <ActivityIndicator size="large" color={colors.primary} style={styles.loadingIndicator} />
       ) : (
         <FlatList
           data={events}
@@ -251,14 +259,14 @@ export default function ExplorePage() {
           refreshing={refreshing}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
-          ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="#866FD8" style={{ marginVertical: 10 }} /> : null}
+          ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color={colors.primary} style={styles.footerLoader} /> : null}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Ionicons name="calendar-outline" size={48} color="#ccc" />
+              <Ionicons name="calendar-outline" size={48} color={colors.textMuted} />
               <Text style={styles.emptyText}>No events found</Text>
             </View>
           }
-          contentContainerStyle={{ paddingBottom: 20 }}
+          contentContainerStyle={styles.feedContent}
         />
       )}
     </View>
@@ -266,42 +274,160 @@ export default function ExplorePage() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', paddingTop: 60 },
-  pageTitle: { fontSize: 24, fontWeight: '700', paddingHorizontal: 16, marginBottom: 12 },
-  searchRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, marginBottom: 8 },
-  searchInput: {
-    flex: 1, backgroundColor: '#f5f5f5', borderRadius: 20,
-    paddingHorizontal: 16, paddingVertical: 10, fontSize: 15,
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+    paddingTop: 60,
   },
-  clearBtn: { marginLeft: 8 },
-  categoryBar: { maxHeight: 50, marginBottom: 12 },
+  pageTitle: {
+    fontSize: fontSizes.xxl,
+    fontFamily: fonts.display,
+    color: colors.text,
+    paddingHorizontal: spacing.base,
+    marginBottom: spacing.md,
+  },
+
+  // Search
+  searchRow: {
+    paddingHorizontal: spacing.base,
+    marginBottom: spacing.sm,
+  },
+  searchInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    paddingHorizontal: spacing.base,
+  },
+  searchIcon: {
+    marginRight: spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: fontSizes.md,
+    fontFamily: fonts.body,
+    color: colors.text,
+    paddingVertical: spacing.md,
+  },
+  clearBtn: {
+    marginLeft: spacing.sm,
+  },
+
+  // Category chips
+  categoryBar: {
+    maxHeight: 50,
+    marginBottom: spacing.md,
+  },
+  categoryBarContent: {
+    paddingHorizontal: spacing.base,
+  },
   catChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#eee',
-    borderRadius: 20,
-    marginRight: 10,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.sm + 2,
+    backgroundColor: colors.glass,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    marginRight: spacing.sm + 2,
   },
-  catChipActive: { backgroundColor: '#866FD8' },
-  catChipText: { fontSize: 14, color: '#666', fontWeight: '500' },
-  catChipTextActive: { color: '#fff', fontWeight: '600' },
+  catChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  catChipText: {
+    fontSize: fontSizes.sm + 1,
+    fontFamily: fonts.bodyMedium,
+    color: colors.textSecondary,
+  },
+  catChipTextActive: {
+    color: '#fff',
+    fontFamily: fonts.bodySemiBold,
+  },
+
+  // Event cards
+  eventCardWrapper: {
+    marginHorizontal: spacing.base,
+    marginBottom: spacing.md,
+  },
   eventCard: {
-    marginHorizontal: 16, marginBottom: 12, backgroundColor: '#fafafa',
-    borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#eee',
+    // GlassCard provides bg, border, borderRadius, and padding
   },
-  eventHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  eventTitle: { fontSize: 17, fontWeight: '600', color: '#333', flex: 1, marginRight: 8 },
-  eventDesc: { fontSize: 14, color: '#666', marginTop: 4, lineHeight: 20 },
-  eventMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 8, flexWrap: 'wrap' },
-  metaItem: { flexDirection: 'row', alignItems: 'center', marginRight: 12 },
-  metaText: { fontSize: 13, color: '#666', marginLeft: 4, maxWidth: 140 },
-  categoryChip: {
-    backgroundColor: '#e8e0ff', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2,
+  eventHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  categoryChipText: { fontSize: 11, color: '#866FD8' },
-  emptyState: { alignItems: 'center', marginTop: 60 },
-  emptyText: { color: '#999', fontSize: 16, marginTop: 12 },
+  eventTitle: {
+    fontSize: fontSizes.lg,
+    fontFamily: fonts.heading,
+    color: colors.text,
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  eventDesc: {
+    fontSize: fontSizes.sm + 1,
+    fontFamily: fonts.body,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+    lineHeight: 20,
+  },
+  eventMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.sm,
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  metaText: {
+    fontSize: fontSizes.sm,
+    fontFamily: fonts.body,
+    color: colors.textMuted,
+    marginLeft: spacing.xs,
+    maxWidth: 140,
+  },
+  categoryBadge: {
+    backgroundColor: colors.primaryGlow,
+    borderRadius: radius.sm + 2,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+  },
+  categoryBadgeText: {
+    fontSize: fontSizes.xs,
+    fontFamily: fonts.bodySemiBold,
+    color: colors.primary,
+  },
+
+  // States
+  feedErrorContainer: {
+    marginHorizontal: spacing.base,
+    marginTop: spacing.lg,
+  },
+  loadingIndicator: {
+    marginTop: 40,
+  },
+  footerLoader: {
+    marginVertical: spacing.sm + 2,
+  },
+  emptyState: {
+    alignItems: 'center',
+    marginTop: 60,
+  },
+  emptyText: {
+    color: colors.textMuted,
+    fontSize: fontSizes.base,
+    fontFamily: fonts.bodyMedium,
+    marginTop: spacing.md,
+  },
+  feedContent: {
+    paddingBottom: spacing.lg,
+  },
 });
