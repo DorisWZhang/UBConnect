@@ -46,6 +46,7 @@ export default function FriendsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
     const [searchLoading, setSearchLoading] = useState(false);
+    const [searchMutualCounts, setSearchMutualCounts] = useState<Record<string, number>>({});
 
     const loadFriends = useCallback(async () => {
         if (!user) return;
@@ -157,6 +158,21 @@ export default function FriendsPage() {
             const results = await searchUsers(text.trim());
             // Filter out self
             setSearchResults(results.filter((u) => u.uid !== user?.uid));
+
+            // Compute mutual friend counts for search results
+            if (friends.length > 0) {
+                const myFriendUids = new Set(friends.map((f) => f.friendUid));
+                const counts: Record<string, number> = {};
+                await Promise.all(
+                    results.filter((u) => u.uid !== user?.uid).map(async (u) => {
+                        try {
+                            const theirFriends = await listFriends(u.uid);
+                            counts[u.uid] = theirFriends.filter((f) => myFriendUids.has(f.friendUid)).length;
+                        } catch { }
+                    }),
+                );
+                setSearchMutualCounts(counts);
+            }
         } catch (err) {
             if (isPermissionDenied(err)) {
                 Alert.alert('Error', 'Please verify your email to search users.');
@@ -363,7 +379,14 @@ export default function FriendsPage() {
                                             {item.displayName.charAt(0).toUpperCase()}
                                         </Text>
                                     </View>
-                                    <Text style={styles.listName}>{item.displayName}</Text>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.listName}>{item.displayName}</Text>
+                                        {(searchMutualCounts[item.uid] ?? 0) > 0 && (
+                                            <Text style={styles.mutualCount}>
+                                                {searchMutualCounts[item.uid]} mutual
+                                            </Text>
+                                        )}
+                                    </View>
                                     <TouchableOpacity
                                         style={styles.addBtn}
                                         onPress={() => handleAddFriend(item.uid)}
@@ -423,6 +446,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 16, backgroundColor: '#f5f5f5', borderRadius: 20,
         paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, marginBottom: 12,
     },
+    mutualCount: { fontSize: 11, color: '#866FD8', marginTop: 2 },
     emptyState: { alignItems: 'center', marginTop: 60 },
     emptyText: { color: '#999', fontSize: 15, marginTop: 12, textAlign: 'center' },
 });
