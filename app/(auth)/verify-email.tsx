@@ -6,6 +6,11 @@ import { sendEmailVerification } from 'firebase/auth';
 import { useAuth } from '@/src/auth/AuthContext';
 import { logEvent } from '@/src/telemetry';
 import InlineNotice from '@/components/InlineNotice';
+import { colors, fonts, fontSizes, spacing, radius } from '@/src/theme';
+import { ThemedText } from '@/components/ThemedText';
+import GradientButton from '@/components/ui/GradientButton';
+import GlassCard from '@/components/ui/GlassCard';
+import ScreenContainer from '@/components/ui/ScreenContainer';
 
 export default function VerifyEmailScreen() {
     const router = useRouter();
@@ -62,102 +67,108 @@ export default function VerifyEmailScreen() {
     };
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.icon}>📧</Text>
-            <Text style={styles.title}>Verify Your Email</Text>
-            <Text style={styles.subtitle}>
-                We've sent a verification email to{'\n'}
-                <Text style={styles.email}>{user?.email || 'your email'}</Text>
-            </Text>
-            <Text style={styles.description}>
-                Please check your inbox and click the verification link to access all features of UBConnect.
-            </Text>
+        <ScreenContainer style={styles.container}>
+            <GlassCard glow style={styles.card}>
+                <Text style={styles.icon}>{'\uD83D\uDCE7'}</Text>
+                <ThemedText type="heading" style={styles.title}>Verify Your Email</ThemedText>
+                <ThemedText style={styles.subtitle}>
+                    We've sent a verification email to{'\n'}
+                    <Text style={styles.email}>{user?.email || 'your email'}</Text>
+                </ThemedText>
+                <ThemedText style={styles.description}>
+                    Please check your inbox and click the verification link to access all features of UBConnect.
+                </ThemedText>
 
-            <InlineNotice message={notice?.message ?? null} type={notice?.type} />
+                <InlineNotice message={notice?.message ?? null} type={notice?.type} />
 
-            {loading && <ActivityIndicator size="large" color="#866FD8" style={{ marginVertical: 20 }} />}
+                {loading && <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />}
+            </GlassCard>
 
-            <TouchableOpacity style={styles.button} onPress={handleRefresh} disabled={loading}>
-                <Text style={styles.buttonText}>I've Verified My Email</Text>
-            </TouchableOpacity>
+            <View style={styles.buttonGroup}>
+                <GradientButton
+                    title="I've Verified My Email"
+                    onPress={handleRefresh}
+                    disabled={loading}
+                    size="lg"
+                    style={styles.button}
+                />
 
-            <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={handleResend} disabled={loading}>
-                <Text style={[styles.buttonText, styles.secondaryButtonText]}>Re-send Verification Email</Text>
-            </TouchableOpacity>
+                <GradientButton
+                    title="Re-send Verification Email"
+                    onPress={handleResend}
+                    disabled={loading}
+                    variant="outline"
+                    size="lg"
+                    style={styles.button}
+                />
+            </View>
 
             <TouchableOpacity
                 style={styles.linkButton}
                 onPress={handleBackToLogin}
             >
-                <Text style={styles.linkText}>Back to Login</Text>
+                <ThemedText type="link" style={styles.linkText}>Back to Login</ThemedText>
             </TouchableOpacity>
-        </View>
+        </ScreenContainer>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
-        flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'white',
-        paddingHorizontal: 30,
+    },
+    card: {
+        alignItems: 'center',
+        width: '100%',
+        maxWidth: 500,
+        marginBottom: spacing.xl,
     },
     icon: {
         fontSize: 60,
-        marginBottom: 20,
+        marginBottom: spacing.lg,
     },
     title: {
-        fontSize: 26,
-        fontWeight: '600',
-        color: '#333',
-        marginBottom: 10,
+        fontSize: fontSizes.xxl,
+        fontFamily: fonts.display,
+        color: colors.text,
+        marginBottom: spacing.md,
     },
     subtitle: {
-        fontSize: 16,
-        color: '#555',
+        fontSize: fontSizes.base,
+        fontFamily: fonts.body,
+        color: colors.textSecondary,
         textAlign: 'center',
-        marginBottom: 10,
+        marginBottom: spacing.md,
     },
     email: {
         fontWeight: '600',
-        color: '#866FD8',
+        fontFamily: fonts.bodySemiBold,
+        color: colors.accent,
     },
     description: {
-        fontSize: 14,
-        color: '#777',
+        fontSize: fontSizes.sm,
+        fontFamily: fonts.body,
+        color: colors.textMuted,
         textAlign: 'center',
-        marginBottom: 10,
+        marginBottom: spacing.md,
         lineHeight: 20,
     },
+    loader: {
+        marginVertical: spacing.lg,
+    },
+    buttonGroup: {
+        width: '100%',
+        maxWidth: 320,
+        gap: spacing.md,
+    },
     button: {
-        backgroundColor: '#866FD8',
-        height: 50,
-        width: 300,
-        maxWidth: '90%',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: 25,
-        marginTop: 12,
-    },
-    buttonText: {
-        fontSize: 16,
-        color: 'white',
-        fontWeight: '600',
-    },
-    secondaryButton: {
-        backgroundColor: 'transparent',
-        borderWidth: 2,
-        borderColor: '#866FD8',
-    },
-    secondaryButtonText: {
-        color: '#866FD8',
+        width: '100%',
     },
     linkButton: {
-        marginTop: 20,
+        marginTop: spacing.lg,
     },
     linkText: {
-        color: '#866FD8',
-        fontSize: 14,
+        fontSize: fontSizes.sm,
     },
 });

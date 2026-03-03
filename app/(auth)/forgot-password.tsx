@@ -4,7 +4,6 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
     View,
@@ -15,6 +14,11 @@ import { auth } from '@/firebaseConfig';
 import InlineNotice from '@/components/InlineNotice';
 import { friendlyAuthError, validateForgotPasswordField } from '@/src/auth/firebaseErrorMap';
 import { logEvent, captureException } from '@/src/telemetry';
+import { colors, fonts, fontSizes, spacing, radius } from '@/src/theme';
+import { ThemedText } from '@/components/ThemedText';
+import GradientButton from '@/components/ui/GradientButton';
+import GlassCard from '@/components/ui/GlassCard';
+import ScreenContainer from '@/components/ui/ScreenContainer';
 
 export default function ForgotPasswordScreen() {
     const router = useRouter();
@@ -48,23 +52,25 @@ export default function ForgotPasswordScreen() {
 
     if (sent) {
         return (
-            <View style={styles.container}>
-                <Text style={styles.icon}>✓</Text>
-                <Text style={styles.title}>Check Your Email</Text>
-                <Text style={styles.subtitle}>
-                    We've sent a password reset link to{'\n'}
-                    <Text style={styles.emailHighlight}>{email.trim()}</Text>
-                </Text>
-                <Text style={styles.description}>
-                    Click the link in the email to set a new password, then come back here to log in.
-                </Text>
-                <TouchableOpacity
-                    style={styles.button}
+            <ScreenContainer style={styles.container}>
+                <GlassCard glow style={styles.successCard}>
+                    <Text style={styles.icon}>{'\u2713'}</Text>
+                    <ThemedText type="heading" style={styles.title}>Check Your Email</ThemedText>
+                    <ThemedText style={styles.subtitle}>
+                        We've sent a password reset link to{'\n'}
+                        <Text style={styles.emailHighlight}>{email.trim()}</Text>
+                    </ThemedText>
+                    <ThemedText style={styles.description}>
+                        Click the link in the email to set a new password, then come back here to log in.
+                    </ThemedText>
+                </GlassCard>
+                <GradientButton
+                    title="Back to Login"
                     onPress={() => router.replace('/(auth)/login')}
-                >
-                    <Text style={styles.buttonText}>Back to Login</Text>
-                </TouchableOpacity>
-            </View>
+                    size="lg"
+                    style={styles.button}
+                />
+            </ScreenContainer>
         );
     }
 
@@ -73,35 +79,32 @@ export default function ForgotPasswordScreen() {
             style={styles.container}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-            <Text style={styles.title}>Reset Password</Text>
-            <Text style={styles.subtitle}>Enter your UBC email and we'll send a reset link.</Text>
+            <ThemedText type="heading" style={styles.title}>Reset Password</ThemedText>
+            <ThemedText style={styles.subtitle}>Enter your UBC email and we'll send a reset link.</ThemedText>
 
             <InlineNotice message={notice?.message ?? null} type={notice?.type} />
 
             <TextInput
                 style={styles.input}
                 placeholder="UBC Email"
-                placeholderTextColor="#aaa"
+                placeholderTextColor={colors.textMuted}
                 value={email}
                 onChangeText={(t) => { setEmail(t); setNotice(null); }}
                 autoCapitalize="none"
                 keyboardType="email-address"
             />
 
-            <TouchableOpacity
-                style={[styles.button, loading && styles.buttonDisabled]}
+            <GradientButton
+                title="Send Reset Email"
                 onPress={handleSendReset}
+                loading={loading}
                 disabled={loading}
-            >
-                {loading ? (
-                    <ActivityIndicator color="#fff" />
-                ) : (
-                    <Text style={styles.buttonText}>Send Reset Email</Text>
-                )}
-            </TouchableOpacity>
+                size="lg"
+                style={styles.button}
+            />
 
             <TouchableOpacity onPress={() => router.replace('/(auth)/login')}>
-                <Text style={styles.link}>Back to Login</Text>
+                <ThemedText type="link" style={styles.link}>Back to Login</ThemedText>
             </TouchableOpacity>
         </KeyboardAvoidingView>
     );
@@ -112,74 +115,72 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: 30,
-        backgroundColor: '#fff',
+        paddingHorizontal: spacing.xxl,
+        backgroundColor: colors.background,
+    },
+    successCard: {
+        alignItems: 'center',
+        marginBottom: spacing.xl,
+        width: '100%',
+        maxWidth: 500,
     },
     icon: {
         fontSize: 60,
-        color: '#866FD8',
-        marginBottom: 20,
+        color: colors.primary,
+        marginBottom: spacing.lg,
+        fontFamily: fonts.display,
     },
     title: {
-        fontSize: 28,
-        fontWeight: '700',
-        color: '#333',
-        marginBottom: 4,
+        fontSize: fontSizes.xxl,
+        fontFamily: fonts.display,
+        color: colors.text,
+        marginBottom: spacing.xs,
         textAlign: 'center',
     },
     subtitle: {
-        fontSize: 14,
-        color: '#888',
-        marginBottom: 10,
+        fontSize: fontSizes.sm,
+        fontFamily: fonts.body,
+        color: colors.textSecondary,
+        marginBottom: spacing.md,
         textAlign: 'center',
     },
     emailHighlight: {
         fontWeight: '600',
-        color: '#866FD8',
+        fontFamily: fonts.bodySemiBold,
+        color: colors.accent,
     },
     description: {
-        fontSize: 14,
-        color: '#777',
+        fontSize: fontSizes.sm,
+        fontFamily: fonts.body,
+        color: colors.textMuted,
         textAlign: 'center',
-        marginBottom: 10,
+        marginBottom: spacing.md,
         lineHeight: 20,
     },
     input: {
-        height: 48,
-        borderColor: '#ddd',
+        height: 50,
+        borderColor: colors.glassBorder,
         borderWidth: 1,
-        borderRadius: 10,
-        paddingHorizontal: 14,
-        fontSize: 16,
-        marginBottom: 14,
-        backgroundColor: '#f9f9f9',
-        color: '#333',
+        borderRadius: radius.md,
+        paddingHorizontal: spacing.base,
+        fontSize: fontSizes.base,
+        fontFamily: fonts.body,
+        marginBottom: spacing.base,
+        backgroundColor: colors.glass,
+        color: colors.text,
         maxWidth: 500,
         width: '100%',
         alignSelf: 'center',
     },
     button: {
-        backgroundColor: '#866FD8',
-        paddingVertical: 14,
-        borderRadius: 25,
-        alignItems: 'center',
-        marginTop: 10,
+        marginTop: spacing.md,
         maxWidth: 500,
         width: '100%',
         alignSelf: 'center',
     },
-    buttonDisabled: {
-        opacity: 0.7,
-    },
-    buttonText: {
-        color: '#fff',
-        fontSize: 17,
-        fontWeight: '600',
-    },
     link: {
-        color: '#866FD8',
         textAlign: 'center',
-        marginTop: 20,
-        fontSize: 14,
+        marginTop: spacing.lg,
+        fontSize: fontSizes.sm,
     },
 });

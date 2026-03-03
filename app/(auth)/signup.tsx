@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
 import {
     StyleSheet,
-    View,
-    Text,
     TextInput,
     TouchableOpacity,
-    ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
 } from 'react-native';
@@ -13,6 +10,9 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/src/auth/AuthContext';
 import InlineNotice from '@/components/InlineNotice';
 import { friendlyAuthError, validateSignupFields } from '@/src/auth/firebaseErrorMap';
+import { colors, fonts, fontSizes, spacing, radius } from '@/src/theme';
+import { ThemedText } from '@/components/ThemedText';
+import GradientButton from '@/components/ui/GradientButton';
 
 export default function SignupScreen() {
     const router = useRouter();
@@ -56,15 +56,15 @@ export default function SignupScreen() {
             style={styles.container}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Use your @student.ubc.ca or @ubc.ca email</Text>
+            <ThemedText type="heading" style={styles.title}>Create Account</ThemedText>
+            <ThemedText style={styles.subtitle}>Use your @student.ubc.ca or @ubc.ca email</ThemedText>
 
             <InlineNotice message={notice?.message ?? null} type={notice?.type} />
 
             <TextInput
                 style={styles.input}
                 placeholder="UBC Email"
-                placeholderTextColor="#aaa"
+                placeholderTextColor={colors.textMuted}
                 value={email}
                 onChangeText={(t) => { setEmail(t); clearNotice(); }}
                 autoCapitalize="none"
@@ -73,7 +73,7 @@ export default function SignupScreen() {
             <TextInput
                 style={styles.input}
                 placeholder="Password"
-                placeholderTextColor="#aaa"
+                placeholderTextColor={colors.textMuted}
                 value={password}
                 onChangeText={(t) => { setPassword(t); clearNotice(); }}
                 secureTextEntry
@@ -82,27 +82,24 @@ export default function SignupScreen() {
             <TextInput
                 style={styles.input}
                 placeholder="Confirm Password"
-                placeholderTextColor="#aaa"
+                placeholderTextColor={colors.textMuted}
                 value={confirm}
                 onChangeText={(t) => { setConfirm(t); clearNotice(); }}
                 secureTextEntry
                 textContentType="none"
             />
 
-            <TouchableOpacity
-                style={[styles.button, loading && styles.buttonDisabled]}
+            <GradientButton
+                title="Sign Up"
                 onPress={handleSignup}
+                loading={loading}
                 disabled={loading}
-            >
-                {loading ? (
-                    <ActivityIndicator color="#fff" />
-                ) : (
-                    <Text style={styles.buttonText}>Sign Up</Text>
-                )}
-            </TouchableOpacity>
+                size="lg"
+                style={styles.button}
+            />
 
             <TouchableOpacity onPress={() => router.replace('/(auth)/login')}>
-                <Text style={styles.link}>Already have an account? Log in</Text>
+                <ThemedText type="link" style={styles.link}>Already have an account? Log in</ThemedText>
             </TouchableOpacity>
         </KeyboardAvoidingView>
     );
@@ -112,58 +109,47 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         justifyContent: 'center',
-        paddingHorizontal: 30,
-        backgroundColor: '#fff',
+        paddingHorizontal: spacing.xxl,
+        backgroundColor: colors.background,
     },
     title: {
-        fontSize: 28,
-        fontWeight: '700',
-        color: '#333',
-        marginBottom: 4,
+        fontSize: fontSizes.xxl,
+        fontFamily: fonts.display,
+        color: colors.text,
+        marginBottom: spacing.xs,
         textAlign: 'center',
     },
     subtitle: {
-        fontSize: 14,
-        color: '#888',
-        marginBottom: 10,
+        fontSize: fontSizes.sm,
+        fontFamily: fonts.body,
+        color: colors.textSecondary,
+        marginBottom: spacing.md,
         textAlign: 'center',
     },
     input: {
-        height: 48,
-        borderColor: '#ddd',
+        height: 50,
+        borderColor: colors.glassBorder,
         borderWidth: 1,
-        borderRadius: 10,
-        paddingHorizontal: 14,
-        fontSize: 16,
-        marginBottom: 14,
-        backgroundColor: '#f9f9f9',
-        color: '#333',
+        borderRadius: radius.md,
+        paddingHorizontal: spacing.base,
+        fontSize: fontSizes.base,
+        fontFamily: fonts.body,
+        marginBottom: spacing.base,
+        backgroundColor: colors.glass,
+        color: colors.text,
         maxWidth: 500,
         width: '100%',
         alignSelf: 'center',
     },
     button: {
-        backgroundColor: '#866FD8',
-        paddingVertical: 14,
-        borderRadius: 25,
-        alignItems: 'center',
-        marginTop: 10,
+        marginTop: spacing.md,
         maxWidth: 500,
         width: '100%',
         alignSelf: 'center',
     },
-    buttonDisabled: {
-        opacity: 0.7,
-    },
-    buttonText: {
-        color: '#fff',
-        fontSize: 17,
-        fontWeight: '600',
-    },
     link: {
-        color: '#866FD8',
         textAlign: 'center',
-        marginTop: 20,
-        fontSize: 14,
+        marginTop: spacing.lg,
+        fontSize: fontSizes.sm,
     },
 });
