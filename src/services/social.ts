@@ -605,8 +605,9 @@ export async function fetchInterestsFeed(
             return b.event.createdAt.getTime() - a.event.createdAt.getTime();
         });
 
-        const sliced = scored.slice(0, pageSize).map(s => s.event);
-        const matchedCount = sliced.filter((_, i) => scored[i].matchesInterest).length;
+        const top = scored.slice(0, pageSize);
+        const matchedCount = top.filter(s => s.matchesInterest).length;
+        const sliced = top.map(s => s.event);
 
         await logEvent('feed_fetch', {
             count: sliced.length,
