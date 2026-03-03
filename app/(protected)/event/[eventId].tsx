@@ -17,6 +17,7 @@ import { createNotification } from '@/src/services/notifications';
 import { ConnectEvent } from '@/components/models/ConnectEvent';
 import { logFirestoreError } from '@/src/telemetry';
 import InlineNotice from '@/components/InlineNotice';
+import { colors, fonts, fontSizes, spacing, radius } from '@/src/theme';
 
 export default function EventDetailScreen() {
     const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -187,7 +188,7 @@ export default function EventDetailScreen() {
     if (loading) {
         return (
             <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <ActivityIndicator size="large" color="#866FD8" />
+                <ActivityIndicator size="large" color={colors.primary} />
             </View>
         );
     }
@@ -210,7 +211,7 @@ export default function EventDetailScreen() {
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.headerBack}>
-                    <Ionicons name="arrow-back" size={24} color="#333" />
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle} numberOfLines={1}>Event Details</Text>
             </View>
@@ -248,7 +249,7 @@ export default function EventDetailScreen() {
                             );
                         }}
                     >
-                        <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                        <Ionicons name="trash-outline" size={16} color={colors.danger} />
                         <Text style={styles.deleteButtonText}>Delete Event</Text>
                     </TouchableOpacity>
                 )}
@@ -257,7 +258,7 @@ export default function EventDetailScreen() {
 
                 {event.startTime && (
                     <View style={styles.infoRow}>
-                        <Ionicons name="time-outline" size={16} color="#666" />
+                        <Ionicons name="time-outline" size={16} color={colors.textMuted} />
                         <Text style={styles.infoText}>
                             {formatDate(event.startTime)}{event.endTime ? ` — ${formatDate(event.endTime)}` : ''}
                         </Text>
@@ -266,7 +267,7 @@ export default function EventDetailScreen() {
 
                 {event.locationName ? (
                     <View style={styles.infoRow}>
-                        <Ionicons name="location-outline" size={16} color="#666" />
+                        <Ionicons name="location-outline" size={16} color={colors.textMuted} />
                         <Text style={styles.infoText}>{event.locationName}</Text>
                     </View>
                 ) : null}
@@ -283,14 +284,14 @@ export default function EventDetailScreen() {
                             </Text>
                         </View>
                         <Text style={styles.hostText}>View Host Profile</Text>
-                        <Ionicons name="chevron-forward" size={16} color="#866FD8" />
+                        <Ionicons name="chevron-forward" size={16} color={colors.primary} />
                     </TouchableOpacity>
                 ) : (
                     <View style={styles.hostRow}>
-                        <View style={[styles.hostAvatar, { backgroundColor: '#ccc' }]}>
-                            <Ionicons name="person-outline" size={18} color="#fff" />
+                        <View style={[styles.hostAvatar, { backgroundColor: colors.textMuted }]}>
+                            <Ionicons name="person-outline" size={18} color={colors.text} />
                         </View>
-                        <Text style={[styles.hostText, { color: '#999' }]}>Host info unavailable</Text>
+                        <Text style={[styles.hostText, { color: colors.textMuted }]}>Host info unavailable</Text>
                     </View>
                 )}
 
@@ -300,14 +301,14 @@ export default function EventDetailScreen() {
                         style={[styles.rsvpButton, rsvpStatus === 'going' && styles.rsvpActive]}
                         onPress={() => handleRsvp('going')}
                     >
-                        <Ionicons name="checkmark-circle" size={18} color={rsvpStatus === 'going' ? '#fff' : '#866FD8'} />
+                        <Ionicons name="checkmark-circle" size={18} color={rsvpStatus === 'going' ? colors.text : colors.primary} />
                         <Text style={[styles.rsvpText, rsvpStatus === 'going' && styles.rsvpTextActive]}>Going</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.rsvpButton, rsvpStatus === 'interested' && styles.rsvpActiveAlt]}
                         onPress={() => handleRsvp('interested')}
                     >
-                        <Ionicons name="star" size={18} color={rsvpStatus === 'interested' ? '#fff' : '#FF9800'} />
+                        <Ionicons name="star" size={18} color={rsvpStatus === 'interested' ? colors.text : colors.primary} />
                         <Text style={[styles.rsvpText, rsvpStatus === 'interested' && styles.rsvpTextActive]}>Interested</Text>
                     </TouchableOpacity>
                 </View>
@@ -325,7 +326,7 @@ export default function EventDetailScreen() {
                             Replying to {replyingTo.name || 'user'}
                         </Text>
                         <TouchableOpacity onPress={() => setReplyingTo(null)}>
-                            <Ionicons name="close-circle" size={20} color="#999" />
+                            <Ionicons name="close-circle" size={20} color={colors.textMuted} />
                         </TouchableOpacity>
                     </View>
                 )}
@@ -337,15 +338,15 @@ export default function EventDetailScreen() {
                         value={commentText}
                         onChangeText={setCommentText}
                         placeholder={replyingTo ? 'Write a reply...' : 'Write a comment...'}
-                        placeholderTextColor="#aaa"
+                        placeholderTextColor={colors.textMuted}
                         maxLength={500}
                     />
                     <TouchableOpacity onPress={handleAddComment} style={styles.sendButton}>
-                        <Ionicons name="send" size={20} color="#fff" />
+                        <Ionicons name="send" size={20} color={colors.text} />
                     </TouchableOpacity>
                 </View>
 
-                {loadingComments && <ActivityIndicator size="small" color="#866FD8" style={{ marginVertical: 10 }} />}
+                {loadingComments && <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 10 }} />}
 
                 {comments.map((c) => (
                     <View key={c.id} style={styles.commentCard}>
@@ -360,7 +361,7 @@ export default function EventDetailScreen() {
                             })}
                             style={styles.replyButton}
                         >
-                            <Ionicons name="chatbubble-outline" size={14} color="#866FD8" />
+                            <Ionicons name="chatbubble-outline" size={14} color={colors.primary} />
                             <Text style={styles.replyButtonText}>Reply</Text>
                         </TouchableOpacity>
 
@@ -385,7 +386,7 @@ export default function EventDetailScreen() {
                                     })}
                                     style={styles.replyButton}
                                 >
-                                    <Ionicons name="chatbubble-outline" size={14} color="#866FD8" />
+                                    <Ionicons name="chatbubble-outline" size={14} color={colors.primary} />
                                     <Text style={styles.replyButtonText}>Reply</Text>
                                 </TouchableOpacity>
                             </View>
@@ -402,85 +403,141 @@ export default function EventDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff' },
+    container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row', alignItems: 'center', paddingTop: 60,
-        paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#eee',
+        paddingHorizontal: spacing.base, paddingBottom: spacing.md,
+        borderBottomWidth: 1, borderBottomColor: colors.border,
+        backgroundColor: colors.surface,
     },
-    headerBack: { marginRight: 12, padding: 4 },
-    headerTitle: { fontSize: 18, fontWeight: '600', color: '#333', flex: 1 },
+    headerBack: { marginRight: spacing.md, padding: 4 },
+    headerTitle: {
+        fontSize: fontSizes.lg, fontFamily: fonts.heading,
+        color: colors.text, flex: 1,
+    },
     scroll: { flex: 1 },
-    scrollContent: { padding: 16, paddingBottom: 40 },
-    eventTitle: { fontSize: 24, fontWeight: '700', color: '#333', marginBottom: 8 },
-    eventDescription: { fontSize: 15, color: '#555', lineHeight: 22, marginBottom: 12 },
+    scrollContent: { padding: spacing.base, paddingBottom: 40 },
+    eventTitle: {
+        fontSize: fontSizes.xl, fontFamily: fonts.display,
+        color: colors.text, marginBottom: spacing.sm,
+    },
+    eventDescription: {
+        fontSize: fontSizes.md, color: colors.textSecondary,
+        lineHeight: 22, marginBottom: spacing.md, fontFamily: fonts.body,
+    },
     categoryBadge: {
-        backgroundColor: '#866FD8', borderRadius: 12, paddingHorizontal: 10,
-        paddingVertical: 3, alignSelf: 'flex-start', marginBottom: 10,
+        backgroundColor: colors.primaryGlow, borderRadius: radius.md,
+        paddingHorizontal: 10, paddingVertical: 3,
+        alignSelf: 'flex-start', marginBottom: 10,
     },
-    categoryBadgeText: { color: '#fff', fontSize: 12 },
+    categoryBadgeText: {
+        color: colors.primary, fontSize: fontSizes.xs, fontFamily: fonts.bodySemiBold,
+    },
     deleteButton: {
-        flexDirection: 'row', alignItems: 'center', backgroundColor: '#fee2e2',
-        paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
-        alignSelf: 'flex-start', marginBottom: 16,
+        flexDirection: 'row', alignItems: 'center', backgroundColor: colors.dangerGlow,
+        paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+        borderRadius: radius.lg, alignSelf: 'flex-start', marginBottom: spacing.base,
     },
-    deleteButtonText: { color: '#ef4444', fontSize: 13, fontWeight: '600', marginLeft: 4 },
-    infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-    infoText: { fontSize: 14, color: '#666', marginLeft: 6 },
+    deleteButtonText: {
+        color: colors.danger, fontSize: fontSizes.sm,
+        fontFamily: fonts.bodySemiBold, marginLeft: spacing.xs,
+    },
+    infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
+    infoText: {
+        fontSize: fontSizes.sm, color: colors.textSecondary,
+        marginLeft: spacing.sm, fontFamily: fonts.body,
+    },
     hostRow: {
-        flexDirection: 'row', alignItems: 'center', paddingVertical: 12,
-        marginVertical: 8, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#eee',
+        flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md,
+        marginVertical: spacing.sm, borderTopWidth: 1, borderBottomWidth: 1,
+        borderColor: colors.border,
     },
     hostAvatar: {
-        width: 36, height: 36, borderRadius: 18, backgroundColor: '#866FD8',
+        width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary,
         alignItems: 'center', justifyContent: 'center', marginRight: 10,
     },
-    hostInitial: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-    hostText: { flex: 1, fontSize: 15, color: '#866FD8', fontWeight: '500' },
-    rsvpRow: { flexDirection: 'row', marginTop: 12, gap: 10 },
+    hostInitial: { color: colors.text, fontSize: fontSizes.base, fontFamily: fonts.display },
+    hostText: {
+        flex: 1, fontSize: fontSizes.md, color: colors.primary,
+        fontFamily: fonts.bodyMedium,
+    },
+    rsvpRow: { flexDirection: 'row', marginTop: spacing.md, gap: 10 },
     rsvpButton: {
         flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-        paddingVertical: 10, borderRadius: 8, borderWidth: 1.5, borderColor: '#866FD8',
+        paddingVertical: 10, borderRadius: radius.sm, borderWidth: 1.5,
+        borderColor: colors.glassBorder,
     },
-    rsvpActive: { backgroundColor: '#866FD8', borderColor: '#866FD8' },
-    rsvpActiveAlt: { backgroundColor: '#FF9800', borderColor: '#FF9800' },
-    rsvpText: { marginLeft: 6, fontSize: 15, fontWeight: '600', color: '#866FD8' },
-    rsvpTextActive: { color: '#fff' },
-    attendeeCount: { fontSize: 13, color: '#666', marginTop: 6, textAlign: 'center' },
-    sectionTitle: { fontSize: 18, fontWeight: '700', color: '#333', marginTop: 20, marginBottom: 12 },
-    commentInputRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+    rsvpActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    rsvpActiveAlt: { backgroundColor: colors.primary, borderColor: colors.primary },
+    rsvpText: {
+        marginLeft: 6, fontSize: fontSizes.md, fontFamily: fonts.bodySemiBold,
+        color: colors.textSecondary,
+    },
+    rsvpTextActive: { color: colors.text },
+    attendeeCount: {
+        fontSize: fontSizes.sm, color: colors.textSecondary,
+        marginTop: spacing.sm, textAlign: 'center', fontFamily: fonts.body,
+    },
+    sectionTitle: {
+        fontSize: fontSizes.lg, fontFamily: fonts.heading,
+        color: colors.text, marginTop: spacing.lg, marginBottom: spacing.md,
+    },
+    commentInputRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.base },
     commentInput: {
-        flex: 1, backgroundColor: '#f5f5f5', borderRadius: 20,
-        paddingHorizontal: 14, paddingVertical: 10, fontSize: 14,
+        flex: 1, backgroundColor: colors.surface, borderRadius: radius.full,
+        paddingHorizontal: 14, paddingVertical: 10, fontSize: fontSizes.sm,
+        color: colors.text, fontFamily: fonts.body,
+        borderWidth: 1, borderColor: colors.glassBorder,
     },
     sendButton: {
-        marginLeft: 8, backgroundColor: '#866FD8', borderRadius: 20,
+        marginLeft: spacing.sm, backgroundColor: colors.primary, borderRadius: radius.full,
         padding: 10, alignItems: 'center', justifyContent: 'center',
     },
     commentCard: {
-        backgroundColor: '#f9f9f9', borderRadius: 10, padding: 12,
-        marginBottom: 10,
+        backgroundColor: colors.glass, borderRadius: radius.md,
+        padding: spacing.md, marginBottom: 10,
+        borderWidth: 1, borderColor: colors.glassBorder,
     },
     commentHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-    commentAuthor: { fontSize: 14, fontWeight: '600', color: '#333' },
-    commentDate: { fontSize: 11, color: '#999' },
-    commentBody: { fontSize: 14, color: '#444', lineHeight: 20 },
-    replyButton: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
-    replyButtonText: { fontSize: 13, color: '#866FD8', marginLeft: 4 },
-    showRepliesButton: { marginTop: 6 },
-    showRepliesText: { fontSize: 13, color: '#666' },
+    commentAuthor: {
+        fontSize: fontSizes.sm, fontFamily: fonts.bodySemiBold, color: colors.text,
+    },
+    commentDate: { fontSize: fontSizes.xs, color: colors.textMuted, fontFamily: fonts.body },
+    commentBody: {
+        fontSize: fontSizes.sm, color: colors.textSecondary,
+        lineHeight: 20, fontFamily: fonts.body,
+    },
+    replyButton: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm },
+    replyButtonText: {
+        fontSize: fontSizes.sm, color: colors.primary,
+        marginLeft: spacing.xs, fontFamily: fonts.bodyMedium,
+    },
+    showRepliesButton: { marginTop: spacing.sm },
+    showRepliesText: {
+        fontSize: fontSizes.sm, color: colors.textMuted, fontFamily: fonts.bodyMedium,
+    },
     replyCard: {
-        backgroundColor: '#f0f0f0', borderRadius: 8, padding: 10,
-        marginTop: 8, marginLeft: 20,
+        backgroundColor: colors.surfaceLight, borderRadius: radius.sm,
+        padding: 10, marginTop: spacing.sm, marginLeft: spacing.lg,
     },
     replyIndicator: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        backgroundColor: '#e8e0ff', borderRadius: 8, padding: 8, marginBottom: 8,
+        backgroundColor: colors.primaryGlow, borderRadius: radius.sm,
+        padding: spacing.sm, marginBottom: spacing.sm,
     },
-    replyIndicatorText: { fontSize: 13, color: '#866FD8', fontWeight: '500' },
-    emptyText: { fontSize: 14, color: '#999', textAlign: 'center', marginTop: 20 },
+    replyIndicatorText: {
+        fontSize: fontSizes.sm, color: colors.primary, fontFamily: fonts.bodyMedium,
+    },
+    emptyText: {
+        fontSize: fontSizes.sm, color: colors.textMuted,
+        textAlign: 'center', marginTop: spacing.lg, fontFamily: fonts.body,
+    },
     backButton: {
-        marginTop: 16, backgroundColor: '#866FD8', paddingHorizontal: 24,
-        paddingVertical: 10, borderRadius: 20,
+        marginTop: spacing.base, backgroundColor: colors.primary,
+        paddingHorizontal: spacing.xl, paddingVertical: 10,
+        borderRadius: radius.full,
     },
-    backButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+    backButtonText: {
+        color: colors.text, fontSize: fontSizes.base, fontFamily: fonts.bodySemiBold,
+    },
 });

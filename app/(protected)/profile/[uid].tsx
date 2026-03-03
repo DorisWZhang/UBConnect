@@ -20,6 +20,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { getAvatarSource } from '@/src/utils/avatarMap';
 import InlineNotice from '@/components/InlineNotice';
 import MutualFriendsModal from '@/components/MutualFriendsModal';
+import { colors, fonts, fontSizes, spacing, radius } from '@/src/theme';
 
 export default function ProfileViewScreen() {
     const { uid } = useLocalSearchParams<{ uid: string }>();
@@ -153,7 +154,7 @@ export default function ProfileViewScreen() {
     if (loading) {
         return (
             <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <ActivityIndicator size="large" color="#866FD8" />
+                <ActivityIndicator size="large" color={colors.primary} />
             </View>
         );
     }
@@ -161,9 +162,9 @@ export default function ProfileViewScreen() {
     if (!profile) {
         return (
             <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <ThemedText>Profile not found</ThemedText>
+                <ThemedText style={{ color: colors.textMuted }}>Profile not found</ThemedText>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                    <ThemedText style={{ color: '#fff' }}>Go Back</ThemedText>
+                    <ThemedText style={{ color: colors.text }}>Go Back</ThemedText>
                 </TouchableOpacity>
             </View>
         );
@@ -174,7 +175,7 @@ export default function ProfileViewScreen() {
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-                    <Ionicons name="arrow-back" size={24} color="#333" />
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
                 <ThemedText style={styles.headerTitle}>Profile</ThemedText>
             </View>
@@ -220,7 +221,7 @@ export default function ProfileViewScreen() {
                             style={styles.mutualRow}
                             onPress={() => setMutualModalVisible(true)}
                         >
-                            <Ionicons name="people-outline" size={14} color="#866FD8" />
+                            <Ionicons name="people-outline" size={14} color={colors.accent} />
                             <ThemedText style={styles.mutualText}>{mutualFriendsText()}</ThemedText>
                         </TouchableOpacity>
                     )}
@@ -296,54 +297,81 @@ export default function ProfileViewScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff' },
+    container: { flex: 1, backgroundColor: colors.background },
     header: {
         flexDirection: 'row', alignItems: 'center', paddingTop: 60,
-        paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#eee',
+        paddingHorizontal: spacing.base, paddingBottom: spacing.md,
+        borderBottomWidth: 1, borderBottomColor: colors.border,
+        backgroundColor: colors.surface,
     },
-    headerTitle: { fontSize: 18, fontWeight: '600', color: '#333', marginLeft: 12 },
-    scrollContent: { padding: 16, paddingBottom: 40 },
-    avatarContainer: { alignItems: 'center', marginBottom: 20 },
+    headerTitle: {
+        fontSize: fontSizes.lg, fontFamily: fonts.heading,
+        color: colors.text, marginLeft: spacing.md,
+    },
+    scrollContent: { padding: spacing.base, paddingBottom: 40 },
+    avatarContainer: { alignItems: 'center', marginBottom: spacing.lg },
     avatar: {
-        width: 90, height: 90, borderRadius: 45, backgroundColor: '#866FD8',
+        width: 90, height: 90, borderRadius: 45, backgroundColor: colors.primary,
         alignItems: 'center', justifyContent: 'center', marginBottom: 10,
     },
-    avatarText: { color: '#fff', fontSize: 36, fontWeight: 'bold' },
+    avatarText: { color: colors.text, fontSize: 36, fontFamily: fonts.display },
     avatarImage: { width: 90, height: 90, borderRadius: 45 },
-    displayName: { fontSize: 22, fontWeight: '700', color: '#333' },
-    bio: { fontSize: 14, color: '#666', marginTop: 6, textAlign: 'center', paddingHorizontal: 20 },
+    displayName: {
+        fontSize: fontSizes.xl, fontFamily: fonts.heading, color: colors.text,
+    },
+    bio: {
+        fontSize: fontSizes.sm, color: colors.textSecondary,
+        marginTop: spacing.sm, textAlign: 'center', paddingHorizontal: spacing.lg,
+        fontFamily: fonts.body,
+    },
     editButton: {
-        marginTop: 12, backgroundColor: '#866FD8', paddingHorizontal: 24,
-        paddingVertical: 8, borderRadius: 20,
+        marginTop: spacing.md, backgroundColor: colors.primary,
+        paddingHorizontal: spacing.xl, paddingVertical: spacing.sm,
+        borderRadius: radius.full,
     },
-    editButtonText: { color: '#fff', fontWeight: '600' },
+    editButtonText: { color: colors.text, fontFamily: fonts.bodySemiBold },
     friendButton: {
-        marginTop: 12, backgroundColor: '#866FD8', paddingHorizontal: 24,
-        paddingVertical: 8, borderRadius: 20,
+        marginTop: spacing.md, backgroundColor: colors.primary,
+        paddingHorizontal: spacing.xl, paddingVertical: spacing.sm,
+        borderRadius: radius.full,
     },
-    friendsBtn: { backgroundColor: '#4CAF50' },
-    pendingBtn: { backgroundColor: '#FF9800' },
-    friendButtonText: { color: '#fff', fontWeight: '600' },
-    section: { marginBottom: 20 },
-    sectionTitle: { fontSize: 18, fontWeight: '700', color: '#333', marginBottom: 10 },
+    friendsBtn: { backgroundColor: colors.success },
+    pendingBtn: { backgroundColor: colors.warning },
+    friendButtonText: { color: colors.text, fontFamily: fonts.bodySemiBold },
+    section: { marginBottom: spacing.lg },
+    sectionTitle: {
+        fontSize: fontSizes.lg, fontFamily: fonts.heading,
+        color: colors.text, marginBottom: 10,
+    },
     chipsRow: { flexDirection: 'row', flexWrap: 'wrap' },
     chip: {
-        backgroundColor: '#e8e0ff', borderRadius: 16, paddingHorizontal: 12,
-        paddingVertical: 6, marginRight: 8, marginBottom: 8,
+        backgroundColor: colors.primaryGlow, borderRadius: radius.lg,
+        paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+        marginRight: spacing.sm, marginBottom: spacing.sm,
     },
-    chipText: { fontSize: 13, color: '#333' },
+    chipText: { fontSize: fontSizes.sm, color: colors.primaryLight, fontFamily: fonts.bodyMedium },
     eventCard: {
-        backgroundColor: '#f5f5f5', borderRadius: 10, padding: 14, marginBottom: 8,
+        backgroundColor: colors.surface, borderRadius: radius.md,
+        padding: 14, marginBottom: spacing.sm,
     },
-    eventCardTitle: { fontSize: 16, fontWeight: '600', color: '#333' },
-    eventCardSub: { fontSize: 13, color: '#777', marginTop: 4 },
-    emptyText: { fontSize: 14, color: '#999', fontStyle: 'italic' },
+    eventCardTitle: {
+        fontSize: fontSizes.base, fontFamily: fonts.bodySemiBold, color: colors.text,
+    },
+    eventCardSub: {
+        fontSize: fontSizes.sm, color: colors.textSecondary, marginTop: spacing.xs,
+        fontFamily: fonts.body,
+    },
+    emptyText: {
+        fontSize: fontSizes.sm, color: colors.textMuted,
+        fontStyle: 'italic', fontFamily: fonts.body,
+    },
     backBtn: {
-        marginTop: 16, backgroundColor: '#866FD8', paddingHorizontal: 24,
-        paddingVertical: 10, borderRadius: 20,
+        marginTop: spacing.base, backgroundColor: colors.primary,
+        paddingHorizontal: spacing.xl, paddingVertical: 10,
+        borderRadius: radius.full,
     },
     mutualRow: {
         flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 6,
     },
-    mutualText: { fontSize: 13, color: '#866FD8' },
+    mutualText: { fontSize: fontSizes.sm, color: colors.accent, fontFamily: fonts.bodyMedium },
 });
