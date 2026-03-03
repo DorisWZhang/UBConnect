@@ -1,7 +1,7 @@
 // app/profile/[uid].tsx — View any user's profile
 import React, { useState, useEffect } from 'react';
 import {
-    StyleSheet, View, ScrollView, TouchableOpacity, ActivityIndicator, Alert,
+    StyleSheet, View, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
@@ -16,6 +16,7 @@ import {
 } from '@/src/services/social';
 import { createNotification } from '@/src/services/notifications';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { getAvatarSource } from '@/src/utils/avatarMap';
 import InlineNotice from '@/components/InlineNotice';
 
 export default function ProfileViewScreen() {
@@ -163,9 +164,13 @@ export default function ProfileViewScreen() {
                 {/* Avatar */}
                 <View style={styles.avatarContainer}>
                     <View style={styles.avatar}>
-                        <ThemedText style={styles.avatarText}>
-                            {profile.displayName.charAt(0).toUpperCase()}
-                        </ThemedText>
+                        {getAvatarSource(profile.photoURL) ? (
+                            <Image source={getAvatarSource(profile.photoURL)!} style={styles.avatarImage} />
+                        ) : (
+                            <ThemedText style={styles.avatarText}>
+                                {profile.displayName.charAt(0).toUpperCase()}
+                            </ThemedText>
+                        )}
                     </View>
                     <ThemedText style={styles.displayName}>{profile.displayName}</ThemedText>
                     {profile.bio ? <ThemedText style={styles.bio}>{profile.bio}</ThemedText> : null}
@@ -271,6 +276,7 @@ const styles = StyleSheet.create({
         alignItems: 'center', justifyContent: 'center', marginBottom: 10,
     },
     avatarText: { color: '#fff', fontSize: 36, fontWeight: 'bold' },
+    avatarImage: { width: 90, height: 90, borderRadius: 45 },
     displayName: { fontSize: 22, fontWeight: '700', color: '#333' },
     bio: { fontSize: 14, color: '#666', marginTop: 6, textAlign: 'center', paddingHorizontal: 20 },
     editButton: {

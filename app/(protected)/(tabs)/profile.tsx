@@ -1,6 +1,6 @@
 // app/(tabs)/profile.tsx — Own profile with hosted/attending events
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Image, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -15,18 +15,30 @@ import {
 } from '@/src/services/social';
 import InlineNotice from '@/components/InlineNotice';
 import { captureException } from '@/src/telemetry';
+import AvatarPickerModal from '@/components/AvatarPickerModal';
+import { getAvatarSource } from '@/src/utils/avatarMap';
 
 export default function ProfilePage() {
   const router = useRouter();
   const { user, logOut } = useAuth();
-  const { name, interests, bio, profileLoading } = useProfile();
-
+  const { name, interests, bio, photoURL, saveProfile, profileLoading } = useProfile();
   const [friends, setFriends] = useState<FriendEdge[]>([]);
   const [hostedEvents, setHostedEvents] = useState<ConnectEvent[]>([]);
   const [attendingEvents, setAttendingEvents] = useState<ConnectEvent[]>([]);
   const [hostedError, setHostedError] = useState<string | null>(null);
   const [attendingError, setAttendingError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pickerVisible, setPickerVisible] = useState(false);
+
+  const handleAvatarSelect = async (key: string) => {
+    try {
+      await saveProfile({ photoURL: key });
+      setPickerVisible(false);
+    } catch (err) {
+      captureException(err, { flow: 'saveAvatar' });
+      Alert.alert('Error', 'Failed to save avatar.');
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -89,10 +101,22 @@ export default function ProfilePage() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Avatar */}
         <View style={styles.avatarSection}>
-          <View style={styles.avatar}>
-            <ThemedText style={styles.avatarText}>
-              {name ? name.charAt(0).toUpperCase() : '?'}
-            </ThemedText>
+          <View style={styles.avatarWrapper}>
+            <View style={styles.avatar}>
+              {getAvatarSource(photoURL) ? (
+                <Image source={getAvatarSource(photoURL)!} style={styles.avatarImage} />
+              ) : (
+                <ThemedText style={styles.avatarText}>
+                  {name ? name.charAt(0).toUpperCase() : '?'}
+                </ThemedText>
+              )}
+            </View>
+            <TouchableOpacity
+              style={styles.avatarEditBtn}
+              onPress={() => setPickerVisible(true)}
+            >
+              <Ionicons name="pencil" size={14} color="#fff" />
+            </TouchableOpacity>
           </View>
           <ThemedText style={styles.displayName}>{name || 'UBC User'}</ThemedText>
           {bio ? <ThemedText style={styles.bio}>{bio}</ThemedText> : null}
@@ -226,6 +250,12 @@ export default function ProfilePage() {
           )}
         </View>
       </ScrollView>
+      <AvatarPickerModal
+        visible={pickerVisible}
+        currentAvatar={photoURL}
+        onSelect={handleAvatarSelect}
+        onClose={() => setPickerVisible(false)}
+      />
     </ThemedView>
   );
 }
@@ -234,10 +264,18 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   scrollContent: { paddingTop: 60, paddingBottom: 40, paddingHorizontal: 16 },
   avatarSection: { alignItems: 'center', marginBottom: 20 },
+  avatarWrapper: { position: 'relative', marginBottom: 10 },
   avatar: {
     width: 90, height: 90, borderRadius: 45, backgroundColor: '#866FD8',
-    alignItems: 'center', justifyContent: 'center', marginBottom: 10,
+    alignItems: 'center', justifyContent: 'center',
   },
+  avatarEditBtn: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 28, height: 28, borderRadius: 14, backgroundColor: '#866FD8',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#fff',
+  },
+  avatarImage: { width: 90, height: 90, borderRadius: 45 },
   avatarText: { color: '#fff', fontSize: 36, fontWeight: 'bold' },
   displayName: { fontSize: 22, fontWeight: '700', color: '#333' },
   bio: { fontSize: 14, color: '#666', marginTop: 4, textAlign: 'center', paddingHorizontal: 20 },

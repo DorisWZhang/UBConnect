@@ -16,6 +16,8 @@ type ProfileContextType = {
   setProgram: (program: string) => void;
   year: string;
   setYear: (year: string) => void;
+  photoURL: string;
+  setPhotoURL: (url: string) => void;
   profileLoading: boolean;
   saveProfile: (patch: Partial<UserProfile>) => Promise<void>;
   reloadProfile: () => Promise<void>;
@@ -32,6 +34,8 @@ const ProfileContext = createContext<ProfileContextType>({
   setProgram: () => { },
   year: '',
   setYear: () => { },
+  photoURL: '',
+  setPhotoURL: () => { },
   profileLoading: true,
   saveProfile: async () => { },
   reloadProfile: async () => { },
@@ -48,6 +52,7 @@ export const ProfileProvider: FC<ProfileProviderProps> = ({ children }) => {
   const [bio, setBio] = useState('');
   const [program, setProgram] = useState('');
   const [year, setYear] = useState('');
+  const [photoURL, setPhotoURL] = useState('');
   const [profileLoading, setProfileLoading] = useState(true);
 
   const loadProfile = useCallback(async () => {
@@ -70,6 +75,7 @@ export const ProfileProvider: FC<ProfileProviderProps> = ({ children }) => {
         setBio(profile.bio || '');
         setProgram(profile.program || '');
         setYear(profile.year || '');
+        setPhotoURL(profile.photoURL || '');
       }
     } catch (err) {
       // Non-critical — use defaults
@@ -112,6 +118,7 @@ export const ProfileProvider: FC<ProfileProviderProps> = ({ children }) => {
     if (patch.bio !== undefined) setBio(patch.bio);
     if (patch.program !== undefined) setProgram(patch.program);
     if (patch.year !== undefined) setYear(patch.year);
+    if (patch.photoURL !== undefined) setPhotoURL(patch.photoURL);
   };
 
   return (
@@ -127,6 +134,8 @@ export const ProfileProvider: FC<ProfileProviderProps> = ({ children }) => {
         setProgram,
         year,
         setYear,
+        photoURL,
+        setPhotoURL,
         profileLoading,
         saveProfile,
         reloadProfile: loadProfile,
