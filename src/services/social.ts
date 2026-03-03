@@ -27,6 +27,7 @@ import { Comment as EventComment, commentFromFirestoreDoc } from '@/components/m
 import { ConnectEvent, fromFirestoreDoc } from '@/components/models/ConnectEvent';
 import { Rsvp, rsvpFromFirestoreDoc } from '@/components/models/Rsvp';
 import { logFirestoreError, isPermissionDenied, logEvent } from '@/src/telemetry';
+import { getMatchedCategories } from '../constants/interestMapping';
 
 // ================================================================
 // Error helper
@@ -574,7 +575,7 @@ export async function fetchEventsFeed(options: {
 
 /**
  * Interests-first safe feed: runs visibility-filtered queries, then ranks
- * events matching user interests higher.
+ * events matching user interests higher using category mapping.
  */
 export async function fetchInterestsFeed(
     userInterests: string[],
@@ -591,12 +592,12 @@ export async function fetchInterestsFeed(
             friendUids,
         });
 
-        const interestSet = new Set(userInterests.map(i => i.toLowerCase()));
+        const matchedCategories = getMatchedCategories(userInterests);
 
         // Sort: interest-matching events first, then by createdAt desc
         const scored = result.events.map(e => ({
             event: e,
-            matchesInterest: interestSet.has((e.categoryId || '').toLowerCase()),
+            matchesInterest: matchedCategories.has(e.categoryId || ''),
         }));
 
         scored.sort((a, b) => {
@@ -605,11 +606,14 @@ export async function fetchInterestsFeed(
         });
 
         const sliced = scored.slice(0, pageSize).map(s => s.event);
+        const matchedCount = sliced.filter((_, i) => scored[i].matchesInterest).length;
 
         await logEvent('feed_fetch', {
             count: sliced.length,
             latencyMs: Date.now() - startTime,
             source: 'interests_first',
+            matchedCount,
+            matchRate: sliced.length > 0 ? matchedCount / sliced.length : 0,
         });
 
         return { events: sliced, lastDoc: null };
