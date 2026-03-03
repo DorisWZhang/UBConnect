@@ -1,23 +1,27 @@
 import React, { useState } from 'react';
 import {
     StyleSheet,
-    Text,
+    View,
     TextInput,
     TouchableOpacity,
-    ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import {
     reauthenticateWithCredential,
     updatePassword,
     EmailAuthProvider,
 } from 'firebase/auth';
 import { useAuth } from '@/src/auth/AuthContext';
+import { ThemedText } from '@/components/ThemedText';
 import InlineNotice from '@/components/InlineNotice';
+import GradientButton from '@/components/ui/GradientButton';
 import { friendlyAuthError, validateChangePasswordFields } from '@/src/auth/firebaseErrorMap';
 import { logEvent, captureException } from '@/src/telemetry';
+import { colors, fonts, fontSizes, spacing, radius } from '@/src/theme';
 
 export default function ChangePasswordScreen() {
     const router = useRouter();
@@ -71,118 +75,163 @@ export default function ChangePasswordScreen() {
     };
 
     return (
-        <KeyboardAvoidingView
-            style={styles.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-            <Text style={styles.title}>Change Password</Text>
-            <Text style={styles.subtitle}>Enter your current password and choose a new one.</Text>
+        <View style={styles.screen}>
+            <SafeAreaView style={styles.safeArea} edges={['top']}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                        <Ionicons name="arrow-back" size={24} color={colors.text} />
+                    </TouchableOpacity>
+                    <ThemedText style={styles.headerTitle}>Change Password</ThemedText>
+                    <View style={styles.headerSpacer} />
+                </View>
 
-            <InlineNotice message={notice?.message ?? null} type={notice?.type} />
+                <KeyboardAvoidingView
+                    style={styles.content}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                >
+                    <View style={styles.formContainer}>
+                        <ThemedText style={styles.subtitle}>
+                            Enter your current password and choose a new one.
+                        </ThemedText>
 
-            <TextInput
-                style={styles.input}
-                placeholder="Current Password"
-                placeholderTextColor="#aaa"
-                value={currentPassword}
-                onChangeText={(t) => { setCurrentPassword(t); clearNotice(); }}
-                secureTextEntry
-                textContentType="password"
-            />
-            <TextInput
-                style={styles.input}
-                placeholder="New Password"
-                placeholderTextColor="#aaa"
-                value={newPassword}
-                onChangeText={(t) => { setNewPassword(t); clearNotice(); }}
-                secureTextEntry
-                textContentType="none"
-            />
-            <TextInput
-                style={styles.input}
-                placeholder="Confirm New Password"
-                placeholderTextColor="#aaa"
-                value={confirmPassword}
-                onChangeText={(t) => { setConfirmPassword(t); clearNotice(); }}
-                secureTextEntry
-                textContentType="none"
-            />
+                        <InlineNotice message={notice?.message ?? null} type={notice?.type} />
 
-            <TouchableOpacity
-                style={[styles.button, loading && styles.buttonDisabled]}
-                onPress={handleChangePassword}
-                disabled={loading}
-            >
-                {loading ? (
-                    <ActivityIndicator color="#fff" />
-                ) : (
-                    <Text style={styles.buttonText}>Update Password</Text>
-                )}
-            </TouchableOpacity>
+                        <View style={styles.fieldContainer}>
+                            <ThemedText style={styles.label}>Current Password</ThemedText>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Enter current password"
+                                placeholderTextColor={colors.textMuted}
+                                value={currentPassword}
+                                onChangeText={(t) => { setCurrentPassword(t); clearNotice(); }}
+                                secureTextEntry
+                                textContentType="password"
+                            />
+                        </View>
 
-            <TouchableOpacity onPress={() => router.back()}>
-                <Text style={styles.link}>Cancel</Text>
-            </TouchableOpacity>
-        </KeyboardAvoidingView>
+                        <View style={styles.fieldContainer}>
+                            <ThemedText style={styles.label}>New Password</ThemedText>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Enter new password"
+                                placeholderTextColor={colors.textMuted}
+                                value={newPassword}
+                                onChangeText={(t) => { setNewPassword(t); clearNotice(); }}
+                                secureTextEntry
+                                textContentType="none"
+                            />
+                        </View>
+
+                        <View style={styles.fieldContainer}>
+                            <ThemedText style={styles.label}>Confirm New Password</ThemedText>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Re-enter new password"
+                                placeholderTextColor={colors.textMuted}
+                                value={confirmPassword}
+                                onChangeText={(t) => { setConfirmPassword(t); clearNotice(); }}
+                                secureTextEntry
+                                textContentType="none"
+                            />
+                        </View>
+
+                        <GradientButton
+                            title="Update Password"
+                            onPress={handleChangePassword}
+                            loading={loading}
+                            disabled={loading}
+                            size="lg"
+                            style={styles.updateButton}
+                        />
+
+                        <TouchableOpacity style={styles.cancelTouchable} onPress={() => router.back()}>
+                            <ThemedText style={styles.cancelText}>Cancel</ThemedText>
+                        </TouchableOpacity>
+                    </View>
+                </KeyboardAvoidingView>
+            </SafeAreaView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
+    screen: {
+        flex: 1,
+        backgroundColor: colors.background,
+    },
+    safeArea: {
+        flex: 1,
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: colors.surface,
+        paddingHorizontal: spacing.base,
+        paddingVertical: spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+    },
+    backButton: {
+        padding: spacing.xs,
+    },
+    headerTitle: {
+        fontSize: fontSizes.lg,
+        fontFamily: fonts.heading,
+        color: colors.text,
+    },
+    headerSpacer: {
+        width: 32,
+    },
+    content: {
         flex: 1,
         justifyContent: 'center',
-        paddingHorizontal: 30,
-        backgroundColor: '#fff',
     },
-    title: {
-        fontSize: 28,
-        fontWeight: '700',
-        color: '#333',
-        marginBottom: 4,
-        textAlign: 'center',
+    formContainer: {
+        paddingHorizontal: spacing.xl,
+        maxWidth: 500,
+        width: '100%',
+        alignSelf: 'center',
     },
     subtitle: {
-        fontSize: 14,
-        color: '#888',
-        marginBottom: 10,
+        fontSize: fontSizes.md,
+        fontFamily: fonts.body,
+        color: colors.textSecondary,
         textAlign: 'center',
+        marginBottom: spacing.lg,
+    },
+    fieldContainer: {
+        marginBottom: spacing.base,
+    },
+    label: {
+        marginBottom: spacing.sm,
+        fontFamily: fonts.bodySemiBold,
+        fontSize: fontSizes.sm,
+        color: colors.textSecondary,
     },
     input: {
-        height: 48,
-        borderColor: '#ddd',
+        height: 50,
+        backgroundColor: colors.glass,
         borderWidth: 1,
-        borderRadius: 10,
-        paddingHorizontal: 14,
-        fontSize: 16,
-        marginBottom: 14,
-        backgroundColor: '#f9f9f9',
-        color: '#333',
-        maxWidth: 500,
-        width: '100%',
-        alignSelf: 'center',
+        borderColor: colors.glassBorder,
+        borderRadius: radius.md,
+        paddingHorizontal: spacing.base,
+        fontSize: fontSizes.base,
+        fontFamily: fonts.body,
+        color: colors.text,
     },
-    button: {
-        backgroundColor: '#866FD8',
-        paddingVertical: 14,
-        borderRadius: 25,
+    updateButton: {
+        marginTop: spacing.lg,
+        width: '100%',
+    },
+    cancelTouchable: {
         alignItems: 'center',
-        marginTop: 10,
-        maxWidth: 500,
-        width: '100%',
-        alignSelf: 'center',
+        paddingVertical: spacing.base,
     },
-    buttonDisabled: {
-        opacity: 0.7,
-    },
-    buttonText: {
-        color: '#fff',
-        fontSize: 17,
-        fontWeight: '600',
-    },
-    link: {
-        color: '#866FD8',
-        textAlign: 'center',
-        marginTop: 20,
-        fontSize: 14,
+    cancelText: {
+        color: colors.textSecondary,
+        fontFamily: fonts.bodyMedium,
+        fontSize: fontSizes.md,
     },
 });

@@ -3,11 +3,13 @@ import React, { useState } from 'react';
 import { StyleSheet, View, TextInput, TouchableOpacity, ScrollView, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ThemedView } from '@/components/ThemedView';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { ThemedText } from '@/components/ThemedText';
 import { useProfile } from '@/contexts/ProfileContext';
 import { logEvent } from '@/src/telemetry';
 import InlineNotice from '@/components/InlineNotice';
+import GradientButton from '@/components/ui/GradientButton';
+import { colors, fonts, fontSizes, spacing, radius } from '@/src/theme';
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -66,13 +68,18 @@ export default function EditProfilePage() {
   };
 
   return (
-    <ThemedView style={styles.container}>
+    <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <ThemedText style={styles.title} type="title">
-            Edit Profile
-          </ThemedText>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleCancel} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <ThemedText style={styles.headerTitle}>Edit Profile</ThemedText>
+          <View style={styles.headerSpacer} />
+        </View>
 
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
           <InlineNotice message={notice?.message ?? null} type={notice?.type} />
 
           {/* Name Input */}
@@ -83,6 +90,7 @@ export default function EditProfilePage() {
               value={tempName}
               onChangeText={setTempName}
               placeholder="Your Name"
+              placeholderTextColor={colors.textMuted}
               maxLength={50}
             />
           </View>
@@ -91,10 +99,11 @@ export default function EditProfilePage() {
           <View style={styles.fieldContainer}>
             <ThemedText style={styles.label}>Bio</ThemedText>
             <TextInput
-              style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+              style={[styles.input, styles.bioInput]}
               value={tempBio}
               onChangeText={setTempBio}
               placeholder="Tell us about yourself"
+              placeholderTextColor={colors.textMuted}
               multiline
               maxLength={280}
             />
@@ -121,19 +130,18 @@ export default function EditProfilePage() {
             </View>
           </View>
 
-          {/* Button Section */}
-          <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={[styles.button, styles.saveButton, saving && { opacity: 0.6 }]}
+          {/* Save Button */}
+          <View style={styles.buttonSection}>
+            <GradientButton
+              title={saving ? 'Saving...' : 'Save Changes'}
               onPress={handleSave}
+              loading={saving}
               disabled={saving}
-            >
-              <ThemedText style={styles.buttonText}>
-                {saving ? 'Saving...' : 'Save'}
-              </ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={handleCancel}>
-              <ThemedText style={styles.buttonText}>Cancel</ThemedText>
+              size="lg"
+              style={styles.saveButton}
+            />
+            <TouchableOpacity style={styles.cancelTouchable} onPress={handleCancel}>
+              <ThemedText style={styles.cancelText}>Cancel</ThemedText>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -146,12 +154,10 @@ export default function EditProfilePage() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowInterestsModal(false)}
       >
-        <ThemedView style={styles.container}>
+        <View style={styles.container}>
           <SafeAreaView style={styles.safeArea} edges={['top']}>
             <View style={styles.modalHeader}>
-              <ThemedText style={styles.modalTitle} type="title">
-                Select Interests
-              </ThemedText>
+              <ThemedText style={styles.modalTitle}>Select Interests</ThemedText>
               <TouchableOpacity onPress={() => setShowInterestsModal(false)}>
                 <ThemedText style={styles.doneText}>Done</ThemedText>
               </TouchableOpacity>
@@ -183,100 +189,153 @@ export default function EditProfilePage() {
               </View>
             </ScrollView>
           </SafeAreaView>
-        </ThemedView>
+        </View>
       </Modal>
 
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
-  modalHeader: {
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#ccc',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  modalTitle: {
-    fontSize: 20,
+  backButton: {
+    padding: spacing.xs,
   },
-  doneText: {
-    fontSize: 16,
-    color: '#866FD8',
-    fontWeight: 'bold',
+  headerTitle: {
+    fontSize: fontSizes.lg,
+    fontFamily: fonts.heading,
+    color: colors.text,
   },
-  editInterestsButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#866FD8',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    marginRight: 8,
-    marginBottom: 8,
-    borderStyle: 'dashed',
+  headerSpacer: {
+    width: 32,
   },
-  editInterestsButtonText: {
-    color: '#866FD8',
-    fontWeight: '600',
+  scrollContainer: {
+    padding: spacing.lg,
   },
-  container: { flex: 1 },
-  scrollContainer: { padding: 20 },
-  title: { fontSize: 22, marginBottom: 20 },
-  fieldContainer: { marginBottom: 16 },
-  label: { marginBottom: 6, fontWeight: '600' },
+  fieldContainer: {
+    marginBottom: spacing.lg,
+  },
+  label: {
+    marginBottom: spacing.sm,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: fontSizes.md,
+    color: colors.textSecondary,
+  },
   input: {
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 6,
-    fontSize: 16,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    fontSize: fontSizes.base,
+    fontFamily: fonts.body,
+    color: colors.text,
+  },
+  bioInput: {
+    height: 100,
+    textAlignVertical: 'top',
+    paddingTop: spacing.md,
   },
   charCount: {
-    fontSize: 12,
-    color: '#999',
+    fontSize: fontSizes.xs,
+    fontFamily: fonts.body,
+    color: colors.textMuted,
     textAlign: 'right',
-    marginTop: 4,
+    marginTop: spacing.xs,
   },
   interestsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
   interestChip: {
-    backgroundColor: '#ccc',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    marginRight: 8,
-    marginBottom: 8,
+    backgroundColor: colors.glass,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.full,
+    marginRight: spacing.sm,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
   },
   interestChipSelected: {
-    backgroundColor: '#866FD8',
+    backgroundColor: colors.primaryGlow,
+    borderColor: colors.primary,
   },
   interestChipText: {
-    color: '#333',
-    fontWeight: '500',
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
   },
   interestChipTextSelected: {
-    color: '#fff',
+    color: colors.primaryLight,
   },
-  buttonRow: {
+  editInterestsButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.primary,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.full,
+    marginRight: spacing.sm,
+    marginBottom: spacing.sm,
+    borderStyle: 'dashed',
+  },
+  editInterestsButtonText: {
+    color: colors.primary,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: fontSizes.sm,
+  },
+  buttonSection: {
+    marginTop: spacing.xl,
+    alignItems: 'center',
+    gap: spacing.base,
+  },
+  saveButton: {
+    width: '100%',
+  },
+  cancelTouchable: {
+    paddingVertical: spacing.sm,
+  },
+  cancelText: {
+    color: colors.textSecondary,
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSizes.md,
+  },
+  modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 24,
-  },
-  button: {
-    flex: 1,
-    padding: 14,
-    borderRadius: 8,
     alignItems: 'center',
-    marginHorizontal: 4,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.base,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  saveButton: { backgroundColor: '#866FD8' },
-  cancelButton: { backgroundColor: '#777' },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  modalTitle: {
+    fontSize: fontSizes.xl,
+    fontFamily: fonts.heading,
+    color: colors.text,
+  },
+  doneText: {
+    fontSize: fontSizes.base,
+    fontFamily: fonts.bodySemiBold,
+    color: colors.accent,
+  },
 });
