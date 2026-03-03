@@ -9,6 +9,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { getAvatarSource } from '@/src/utils/avatarMap';
 import { MutualFriend } from '@/src/services/social';
+import { colors, fonts, fontSizes, spacing, radius } from '@/src/theme';
 
 interface Props {
     visible: boolean;
@@ -38,7 +39,7 @@ export default function MutualFriendsModal({ visible, friends, onClose }: Props)
                     )}
                 </View>
                 <ThemedText style={styles.rowName}>{item.displayName}</ThemedText>
-                <Ionicons name="chevron-forward" size={18} color="#ccc" />
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </TouchableOpacity>
         );
     };
@@ -50,7 +51,7 @@ export default function MutualFriendsModal({ visible, friends, onClose }: Props)
                     <View style={styles.header}>
                         <ThemedText style={styles.title}>Mutual Friends</ThemedText>
                         <TouchableOpacity onPress={onClose}>
-                            <Ionicons name="close" size={24} color="#333" />
+                            <Ionicons name="close" size={24} color={colors.textMuted} />
                         </TouchableOpacity>
                     </View>
                     <FlatList
@@ -66,28 +67,68 @@ export default function MutualFriendsModal({ visible, friends, onClose }: Props)
 }
 
 const styles = StyleSheet.create({
-    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+    overlay: {
+        flex: 1,
+        backgroundColor: colors.overlay,
+        justifyContent: 'flex-end',
+    },
     sheet: {
-        backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,
-        maxHeight: '60%', paddingBottom: 34,
+        backgroundColor: colors.surface,
+        borderTopLeftRadius: radius.xl,
+        borderTopRightRadius: radius.xl,
+        maxHeight: '60%',
+        paddingBottom: 34,
     },
     header: {
-        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-        paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12,
-        borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: spacing.base,
+        paddingTop: spacing.base,
+        paddingBottom: spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
     },
-    title: { fontSize: 18, fontWeight: '700', color: '#333' },
-    list: { paddingHorizontal: 16, paddingTop: 8 },
+    title: {
+        fontSize: fontSizes.lg,
+        fontFamily: fonts.heading,
+        color: colors.text,
+    },
+    list: {
+        paddingHorizontal: spacing.base,
+        paddingTop: spacing.sm,
+    },
     row: {
-        flexDirection: 'row', alignItems: 'center', paddingVertical: 12,
-        borderBottomWidth: 1, borderBottomColor: '#f5f5f5',
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
     },
     rowAvatar: {
-        width: 40, height: 40, borderRadius: 20, backgroundColor: '#866FD8',
-        alignItems: 'center', justifyContent: 'center', marginRight: 12,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: colors.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: spacing.md,
         overflow: 'hidden',
     },
-    rowAvatarImg: { width: 40, height: 40, borderRadius: 20 },
-    rowAvatarText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-    rowName: { flex: 1, fontSize: 16, color: '#333', fontWeight: '500' },
+    rowAvatarImg: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+    },
+    rowAvatarText: {
+        color: colors.text,
+        fontSize: fontSizes.base,
+        fontFamily: fonts.bodySemiBold,
+    },
+    rowName: {
+        flex: 1,
+        fontSize: fontSizes.base,
+        color: colors.text,
+        fontFamily: fonts.bodyMedium,
+    },
 });

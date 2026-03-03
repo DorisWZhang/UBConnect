@@ -13,6 +13,8 @@ import {
 import { ThemedText } from '@/components/ThemedText';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getAvatarKeys, getAvatarImage, AvatarStyle } from '@/src/utils/avatarMap';
+import { colors, fonts, fontSizes, spacing, radius } from '@/src/theme';
+import GradientButton from '@/components/ui/GradientButton';
 
 interface Props {
   visible: boolean;
@@ -78,7 +80,7 @@ export default function AvatarPickerModal({
           </View>
           {isCurrent && (
             <View style={styles.checkBadge}>
-              <Ionicons name="checkmark-circle" size={20} color="#34D399" />
+              <Ionicons name="checkmark-circle" size={20} color={colors.success} />
             </View>
           )}
         </TouchableOpacity>
@@ -103,7 +105,7 @@ export default function AvatarPickerModal({
           <View style={styles.header}>
             <ThemedText style={styles.title}>Choose Avatar</ThemedText>
             <TouchableOpacity onPress={handleClose} hitSlop={8}>
-              <Ionicons name="close" size={24} color="#333" />
+              <Ionicons name="close" size={24} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
 
@@ -145,17 +147,13 @@ export default function AvatarPickerModal({
           />
 
           {/* Save button */}
-          <TouchableOpacity
-            style={[
-              styles.saveButton,
-              !selected && styles.saveButtonDisabled,
-            ]}
+          <GradientButton
+            title="Save"
             onPress={handleSave}
             disabled={!selected}
-            activeOpacity={0.8}
-          >
-            <ThemedText style={styles.saveButtonText}>Save</ThemedText>
-          </TouchableOpacity>
+            size="lg"
+            style={styles.saveButton}
+          />
         </Pressable>
       </Pressable>
     </Modal>
@@ -165,16 +163,18 @@ export default function AvatarPickerModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: colors.overlay,
     justifyContent: 'flex-end',
   },
   sheet: {
     maxHeight: '80%',
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    borderTopWidth: 1,
+    borderTopColor: colors.glassBorder,
+    paddingHorizontal: spacing.base,
+    paddingTop: spacing.base,
     paddingBottom: 34,
   },
 
@@ -183,51 +183,51 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#333',
+    fontSize: fontSizes.xl,
+    fontFamily: fonts.heading,
+    color: colors.text,
   },
 
   // Tabs
   tabRow: {
     flexDirection: 'row',
-    marginBottom: 12,
+    marginBottom: spacing.md,
     gap: 10,
   },
   tabButton: {
     flex: 1,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: radius.sm,
     alignItems: 'center',
   },
   tabActive: {
-    backgroundColor: '#866FD8',
+    backgroundColor: colors.primary,
   },
   tabInactive: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: colors.glass,
   },
   tabText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: fontSizes.md,
+    fontFamily: fonts.bodySemiBold,
   },
   tabTextActive: {
     color: '#fff',
   },
   tabTextInactive: {
-    color: '#666',
+    color: colors.textSecondary,
   },
 
   // Grid
   gridContent: {
-    paddingBottom: 12,
+    paddingBottom: spacing.md,
   },
   gridItem: {
     flex: 1,
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md,
     position: 'relative',
   },
   avatarCircle: {
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   avatarCircleSelected: {
-    borderColor: '#866FD8',
+    borderColor: colors.primary,
   },
   avatarImage: {
     width: '100%',
@@ -252,24 +252,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 8,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 10,
   },
 
   // Save button
   saveButton: {
-    backgroundColor: '#866FD8',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  saveButtonDisabled: {
-    opacity: 0.5,
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
+    marginTop: spacing.xs,
   },
 });
