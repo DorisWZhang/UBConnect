@@ -319,9 +319,11 @@ const styles = StyleSheet.create({
   categoryBar: {
     marginBottom: spacing.md,
     flexGrow: 0,
+    flexShrink: 0,
   },
   categoryBarContent: {
     paddingHorizontal: spacing.base,
+    paddingVertical: spacing.xs,
   },
   catChip: {
     flexDirection: 'row',

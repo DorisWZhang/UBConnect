@@ -10,8 +10,9 @@ import { ConnectEvent } from '@/components/models/ConnectEvent';
 import {
   listFriends, FriendEdge, fetchEventsByCreator,
   fetchUserAttendingEventIds, fetchEventsByIds,
-  isFailedPrecondition, getFirestoreErrorMessage
+  fetchUserProfile, isFailedPrecondition, getFirestoreErrorMessage
 } from '@/src/services/social';
+import { UserProfile } from '@/components/models/UserProfile';
 import InlineNotice from '@/components/InlineNotice';
 import { captureException } from '@/src/telemetry';
 import AvatarPickerModal from '@/components/AvatarPickerModal';
@@ -25,6 +26,7 @@ export default function ProfilePage() {
   const { user, logOut } = useAuth();
   const { name, interests, bio, photoURL, saveProfile, profileLoading } = useProfile();
   const [friends, setFriends] = useState<FriendEdge[]>([]);
+  const [friendProfiles, setFriendProfiles] = useState<Record<string, UserProfile>>({});
   const [hostedEvents, setHostedEvents] = useState<ConnectEvent[]>([]);
   const [attendingEvents, setAttendingEvents] = useState<ConnectEvent[]>([]);
   const [hostedError, setHostedError] = useState<string | null>(null);
@@ -49,6 +51,12 @@ export default function ProfilePage() {
       try {
         const friendsList = await listFriends(user.uid);
         setFriends(friendsList);
+        const profiles = await Promise.all(
+          friendsList.slice(0, 5).map((f) => fetchUserProfile(f.friendUid))
+        );
+        const profileMap: Record<string, UserProfile> = {};
+        profiles.forEach((p) => { if (p) profileMap[p.uid] = p; });
+        setFriendProfiles(profileMap);
       } catch (err) {
         captureException(err, { flow: 'loadProfileFriends' });
       }
@@ -241,19 +249,26 @@ export default function ProfilePage() {
             <ThemedText style={styles.emptyText}>No friends yet</ThemedText>
           ) : (
             <View style={styles.friendsList}>
-              {friends.slice(0, 5).map((f) => (
-                <TouchableOpacity
-                  key={f.friendUid}
-                  style={styles.friendItem}
-                  onPress={() => router.push(`/profile/${f.friendUid}`)}
-                >
-                  <View style={styles.friendAvatar}>
-                    <ThemedText style={styles.friendAvatarText}>
-                      {f.friendUid.charAt(0).toUpperCase()}
-                    </ThemedText>
-                  </View>
-                </TouchableOpacity>
-              ))}
+              {friends.slice(0, 5).map((f) => {
+                const fp = friendProfiles[f.friendUid];
+                const avatarSrc = fp ? getAvatarSource(fp.photoURL) : null;
+                const initial = fp?.displayName?.charAt(0).toUpperCase() || f.friendUid.charAt(0).toUpperCase();
+                return (
+                  <TouchableOpacity
+                    key={f.friendUid}
+                    style={styles.friendItem}
+                    onPress={() => router.push(`/profile/${f.friendUid}`)}
+                  >
+                    <View style={styles.friendAvatar}>
+                      {avatarSrc ? (
+                        <Image source={avatarSrc} style={styles.friendAvatarImg} />
+                      ) : (
+                        <ThemedText style={styles.friendAvatarText}>{initial}</ThemedText>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
               {friends.length > 5 && (
                 <TouchableOpacity
                   style={[styles.friendAvatar, { backgroundColor: colors.surfaceLight }]}
@@ -469,6 +484,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  friendAvatarImg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   friendAvatarText: {
     color: '#fff',
