@@ -7,6 +7,7 @@ import { useAuth } from '@/src/auth/AuthContext';
 import { Notification } from '@/components/models/Notification';
 import { fetchNotifications, markNotificationRead, deleteNotifications } from '@/src/services/notifications';
 import { captureException } from '@/src/telemetry';
+import { colors, fonts, fontSizes, spacing, radius } from '@/src/theme';
 
 export default function NotificationsPage() {
   const { user } = useAuth();
@@ -106,7 +107,7 @@ export default function NotificationsPage() {
   if (loading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#866FD8" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -129,7 +130,7 @@ export default function NotificationsPage() {
 
       {notifications.length === 0 ? (
         <View style={styles.emptyState}>
-          <Ionicons name="notifications-off-outline" size={48} color="#ccc" />
+          <Ionicons name="notifications-off-outline" size={48} color={colors.textMuted} />
           <Text style={styles.emptyText}>No notifications yet</Text>
         </View>
       ) : (
@@ -148,9 +149,9 @@ export default function NotificationsPage() {
               {isEditing && (
                 <View style={styles.selectCircle}>
                   {selectedIds.has(item.id) ? (
-                    <Ionicons name="checkmark-circle" size={24} color="#ef4444" />
+                    <Ionicons name="checkmark-circle" size={24} color={colors.danger} />
                   ) : (
-                    <Ionicons name="ellipse-outline" size={24} color="#ccc" />
+                    <Ionicons name="ellipse-outline" size={24} color={colors.textMuted} />
                   )}
                 </View>
               )}
@@ -158,7 +159,7 @@ export default function NotificationsPage() {
                 <Ionicons
                   name={getIcon(item.type) as keyof typeof Ionicons.glyphMap}
                   size={20}
-                  color={!item.readAt ? '#fff' : '#866FD8'}
+                  color={!item.readAt ? colors.text : colors.primaryLight}
                 />
               </View>
               <View style={{ flex: 1 }}>
@@ -181,7 +182,7 @@ export default function NotificationsPage() {
             disabled={deleting}
           >
             {deleting ? (
-              <ActivityIndicator color="#fff" size="small" />
+              <ActivityIndicator color={colors.danger} size="small" />
             ) : (
               <Text style={styles.deleteButtonText}>
                 Delete Selected ({selectedIds.size})
@@ -195,36 +196,110 @@ export default function NotificationsPage() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', paddingTop: 60 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 16 },
-  header: { fontSize: 24, fontWeight: '700' },
-  headerAction: { fontSize: 16, color: '#866FD8', fontWeight: '600' },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+    paddingTop: 60,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.base,
+    marginBottom: spacing.base,
+  },
+  header: {
+    fontSize: fontSizes.xxl,
+    fontFamily: fonts.display,
+    color: colors.text,
+  },
+  headerAction: {
+    fontSize: fontSizes.base,
+    fontFamily: fonts.bodySemiBold,
+    color: colors.primaryLight,
+  },
   notifItem: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16,
-    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.base,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  unreadItem: { backgroundColor: '#f8f5ff' },
+  unreadItem: {
+    backgroundColor: colors.primaryGlow,
+  },
   iconCircle: {
-    width: 40, height: 40, borderRadius: 20, backgroundColor: '#f0ebff',
-    alignItems: 'center', justifyContent: 'center', marginRight: 12,
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
   },
-  unreadCircle: { backgroundColor: '#866FD8' },
-  notifText: { fontSize: 15, color: '#333', lineHeight: 20 },
-  unreadText: { fontWeight: '600' },
-  notifTime: { fontSize: 12, color: '#999', marginTop: 2 },
+  unreadCircle: {
+    backgroundColor: colors.primary,
+    borderWidth: 0,
+    borderColor: 'transparent',
+  },
+  notifText: {
+    fontSize: fontSizes.md,
+    fontFamily: fonts.body,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  unreadText: {
+    fontFamily: fonts.bodySemiBold,
+    color: colors.text,
+  },
+  notifTime: {
+    fontSize: fontSizes.xs,
+    fontFamily: fonts.body,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
   unreadDot: {
-    width: 8, height: 8, borderRadius: 4, backgroundColor: '#866FD8', marginLeft: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.accent,
+    marginLeft: spacing.sm,
   },
-  selectCircle: { marginRight: 12, justifyContent: 'center', alignItems: 'center' },
-  emptyState: { alignItems: 'center', marginTop: 80 },
-  emptyText: { color: '#999', fontSize: 16, marginTop: 12 },
+  selectCircle: {
+    marginRight: spacing.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    marginTop: 80,
+  },
+  emptyText: {
+    color: colors.textMuted,
+    fontSize: fontSizes.base,
+    fontFamily: fonts.bodyMedium,
+    marginTop: spacing.md,
+  },
   actionBar: {
-    padding: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#f0f0f0',
-    paddingBottom: 32, // Safe area padding
+    padding: spacing.base,
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingBottom: spacing.xxl, // Safe area padding
   },
   deleteButton: {
-    backgroundColor: '#ef4444', borderRadius: 24, paddingVertical: 14,
-    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.dangerGlow,
+    borderRadius: radius.xxl,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  deleteButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  deleteButtonText: {
+    color: colors.danger,
+    fontSize: fontSizes.base,
+    fontFamily: fonts.bodySemiBold,
+  },
 });
