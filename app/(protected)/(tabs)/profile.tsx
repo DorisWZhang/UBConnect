@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Image, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/src/auth/AuthContext';
@@ -17,6 +16,9 @@ import InlineNotice from '@/components/InlineNotice';
 import { captureException } from '@/src/telemetry';
 import AvatarPickerModal from '@/components/AvatarPickerModal';
 import { getAvatarSource } from '@/src/utils/avatarMap';
+import GlassCard from '@/components/ui/GlassCard';
+import GradientButton from '@/components/ui/GradientButton';
+import { colors, fonts, fontSizes, spacing, radius } from '@/src/theme';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -90,26 +92,28 @@ export default function ProfilePage() {
 
   if (profileLoading || loading) {
     return (
-      <ThemedView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#866FD8" />
-      </ThemedView>
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
+    <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Avatar */}
         <View style={styles.avatarSection}>
           <View style={styles.avatarWrapper}>
-            <View style={styles.avatar}>
-              {getAvatarSource(photoURL) ? (
-                <Image source={getAvatarSource(photoURL)!} style={styles.avatarImage} />
-              ) : (
-                <ThemedText style={styles.avatarText}>
-                  {name ? name.charAt(0).toUpperCase() : '?'}
-                </ThemedText>
-              )}
+            <View style={styles.avatarRing}>
+              <View style={styles.avatar}>
+                {getAvatarSource(photoURL) ? (
+                  <Image source={getAvatarSource(photoURL)!} style={styles.avatarImage} />
+                ) : (
+                  <ThemedText style={styles.avatarText}>
+                    {name ? name.charAt(0).toUpperCase() : '?'}
+                  </ThemedText>
+                )}
+              </View>
             </View>
             <TouchableOpacity
               style={styles.avatarEditBtn}
@@ -123,35 +127,49 @@ export default function ProfilePage() {
 
           {/* Actions */}
           <View style={styles.actionsRow}>
-            <TouchableOpacity style={styles.editBtn} onPress={() => router.push('/edit-profile')}>
-              <Ionicons name="create-outline" size={18} color="#fff" />
-              <ThemedText style={styles.editBtnText}>Edit Profile</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.editBtn} onPress={() => router.push('/(protected)/change-password')}>
-              <Ionicons name="lock-closed-outline" size={18} color="#fff" />
-              <ThemedText style={styles.editBtnText}>Change Password</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-              <Ionicons name="log-out-outline" size={18} color="#e65100" />
-            </TouchableOpacity>
+            <GradientButton
+              variant="outline"
+              size="sm"
+              title="Edit Profile"
+              icon={<Ionicons name="create-outline" size={16} color={colors.primary} />}
+              onPress={() => router.push('/edit-profile')}
+            />
+            <GradientButton
+              variant="ghost"
+              size="sm"
+              title="Change Password"
+              icon={<Ionicons name="lock-closed-outline" size={16} color={colors.textSecondary} />}
+              onPress={() => router.push('/(protected)/change-password')}
+            />
+            <GradientButton
+              variant="danger"
+              size="sm"
+              title="Logout"
+              icon={<Ionicons name="log-out-outline" size={16} color="#fff" />}
+              onPress={handleLogout}
+            />
           </View>
         </View>
 
         {/* Stats */}
-        <View style={styles.statsRow}>
-          <TouchableOpacity style={styles.statBox} onPress={() => router.push('/(protected)/(tabs)/friends')}>
-            <ThemedText style={styles.statNumber}>{friends.length}</ThemedText>
-            <ThemedText style={styles.statLabel}>Friends</ThemedText>
-          </TouchableOpacity>
-          <View style={styles.statBox}>
-            <ThemedText style={styles.statNumber}>{hostedEvents.length}</ThemedText>
-            <ThemedText style={styles.statLabel}>Hosting</ThemedText>
+        <GlassCard style={styles.statsCard}>
+          <View style={styles.statsRow}>
+            <TouchableOpacity style={styles.statBox} onPress={() => router.push('/(protected)/(tabs)/friends')}>
+              <ThemedText style={styles.statNumber}>{friends.length}</ThemedText>
+              <ThemedText style={styles.statLabel}>Friends</ThemedText>
+            </TouchableOpacity>
+            <View style={styles.statDivider} />
+            <View style={styles.statBox}>
+              <ThemedText style={styles.statNumber}>{hostedEvents.length}</ThemedText>
+              <ThemedText style={styles.statLabel}>Hosting</ThemedText>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statBox}>
+              <ThemedText style={styles.statNumber}>{attendingEvents.length}</ThemedText>
+              <ThemedText style={styles.statLabel}>Attending</ThemedText>
+            </View>
           </View>
-          <View style={styles.statBox}>
-            <ThemedText style={styles.statNumber}>{attendingEvents.length}</ThemedText>
-            <ThemedText style={styles.statLabel}>Attending</ThemedText>
-          </View>
-        </View>
+        </GlassCard>
 
         {/* Interests */}
         {interests && interests.length > 0 && (
@@ -216,7 +234,7 @@ export default function ProfilePage() {
           <View style={styles.sectionHeader}>
             <ThemedText style={styles.sectionTitle}>Friends</ThemedText>
             <TouchableOpacity onPress={() => router.push('/(protected)/(tabs)/friends')}>
-              <ThemedText style={{ color: '#866FD8', fontSize: 14 }}>See All</ThemedText>
+              <ThemedText style={styles.seeAllText}>See All</ThemedText>
             </TouchableOpacity>
           </View>
           {friends.length === 0 ? (
@@ -238,10 +256,10 @@ export default function ProfilePage() {
               ))}
               {friends.length > 5 && (
                 <TouchableOpacity
-                  style={[styles.friendAvatar, { backgroundColor: '#eee' }]}
+                  style={[styles.friendAvatar, { backgroundColor: colors.surfaceLight }]}
                   onPress={() => router.push('/(protected)/(tabs)/friends')}
                 >
-                  <ThemedText style={{ color: '#666', fontSize: 12 }}>
+                  <ThemedText style={styles.friendOverflowText}>
                     +{friends.length - 5}
                   </ThemedText>
                 </TouchableOpacity>
@@ -256,60 +274,209 @@ export default function ProfilePage() {
         onSelect={handleAvatarSelect}
         onClose={() => setPickerVisible(false)}
       />
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  scrollContent: { paddingTop: 60, paddingBottom: 40, paddingHorizontal: 16 },
-  avatarSection: { alignItems: 'center', marginBottom: 20 },
-  avatarWrapper: { position: 'relative', marginBottom: 10 },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollContent: {
+    paddingTop: 60,
+    paddingBottom: 40,
+    paddingHorizontal: spacing.base,
+  },
+  avatarSection: {
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+  },
+  avatarWrapper: {
+    position: 'relative',
+    marginBottom: spacing.md,
+  },
+  avatarRing: {
+    width: 98,
+    height: 98,
+    borderRadius: 49,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+  },
   avatar: {
-    width: 90, height: 90, borderRadius: 45, backgroundColor: '#866FD8',
-    alignItems: 'center', justifyContent: 'center',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarEditBtn: {
-    position: 'absolute', bottom: 0, right: 0,
-    width: 28, height: 28, borderRadius: 14, backgroundColor: '#866FD8',
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: '#fff',
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.background,
   },
-  avatarImage: { width: 90, height: 90, borderRadius: 45 },
-  avatarText: { color: '#fff', fontSize: 36, fontWeight: 'bold' },
-  displayName: { fontSize: 22, fontWeight: '700', color: '#333' },
-  bio: { fontSize: 14, color: '#666', marginTop: 4, textAlign: 'center', paddingHorizontal: 20 },
-  actionsRow: { flexDirection: 'row', marginTop: 12, gap: 10 },
-  editBtn: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#866FD8',
-    paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20,
+  avatarImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
   },
-  editBtnText: { color: '#fff', fontWeight: '600', marginLeft: 6 },
-  logoutBtn: { padding: 8, borderRadius: 20, borderWidth: 1, borderColor: '#e65100' },
-  statsRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 20 },
-  statBox: { alignItems: 'center' },
-  statNumber: { fontSize: 20, fontWeight: '700', color: '#866FD8' },
-  statLabel: { fontSize: 12, color: '#999', marginTop: 2 },
-  section: { marginBottom: 20 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#333', marginBottom: 10 },
-  chipsRow: { flexDirection: 'row', flexWrap: 'wrap' },
+  avatarText: {
+    color: '#fff',
+    fontSize: 36,
+    fontFamily: fonts.display,
+    fontWeight: 'bold',
+  },
+  displayName: {
+    fontSize: fontSizes.xl,
+    fontFamily: fonts.heading,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  bio: {
+    fontSize: fontSizes.sm,
+    fontFamily: fonts.body,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+    textAlign: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    marginTop: spacing.md,
+    gap: spacing.sm,
+  },
+  statsCard: {
+    marginBottom: spacing.lg,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  statBox: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: colors.border,
+  },
+  statNumber: {
+    fontSize: fontSizes.xl,
+    fontFamily: fonts.display,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  statLabel: {
+    fontSize: fontSizes.xs,
+    fontFamily: fonts.body,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  section: {
+    marginBottom: spacing.lg,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  sectionTitle: {
+    fontSize: fontSizes.lg,
+    fontFamily: fonts.heading,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: spacing.sm,
+  },
+  seeAllText: {
+    fontSize: fontSizes.sm,
+    fontFamily: fonts.bodyMedium,
+    color: colors.primary,
+  },
+  chipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
   chip: {
-    backgroundColor: '#e8e0ff', borderRadius: 16, paddingHorizontal: 12,
-    paddingVertical: 6, marginRight: 8, marginBottom: 8,
+    backgroundColor: colors.primaryGlow,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    marginRight: spacing.sm,
+    marginBottom: spacing.sm,
   },
-  chipText: { fontSize: 13, color: '#333' },
+  chipText: {
+    fontSize: fontSizes.sm,
+    fontFamily: fonts.bodyMedium,
+    color: colors.primaryLight,
+  },
   eventCard: {
-    backgroundColor: '#f5f5f5', borderRadius: 10, padding: 14, marginBottom: 8,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    padding: spacing.base,
+    marginBottom: spacing.sm,
   },
-  eventTitle: { fontSize: 16, fontWeight: '600', color: '#333' },
-  eventSub: { fontSize: 13, color: '#777', marginTop: 4 },
-  emptyText: { fontSize: 14, color: '#999', fontStyle: 'italic' },
-  friendsList: { flexDirection: 'row', flexWrap: 'wrap' },
-  friendItem: { marginRight: 8 },
+  eventTitle: {
+    fontSize: fontSizes.base,
+    fontFamily: fonts.bodySemiBold,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  eventSub: {
+    fontSize: fontSizes.sm,
+    fontFamily: fonts.body,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  emptyText: {
+    fontSize: fontSizes.sm,
+    fontFamily: fonts.body,
+    color: colors.textMuted,
+    fontStyle: 'italic',
+  },
+  friendsList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  friendItem: {
+    marginRight: spacing.sm,
+  },
   friendAvatar: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: '#866FD8',
-    alignItems: 'center', justifyContent: 'center',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  friendAvatarText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  friendAvatarText: {
+    color: '#fff',
+    fontSize: fontSizes.lg,
+    fontFamily: fonts.bodySemiBold,
+    fontWeight: 'bold',
+  },
+  friendOverflowText: {
+    color: colors.textSecondary,
+    fontSize: fontSizes.xs,
+    fontFamily: fonts.bodyMedium,
+  },
 });
